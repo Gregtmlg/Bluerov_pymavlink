@@ -873,7 +873,7 @@ if __name__ == '__main__':
     ox = [1.866, 10.44, 1.9, -7.12, 1.866]
     oy = [-21.355, -26.35, -41.22, -35.59, -21.355]
     oz = [-7.409]
-    resolution = 1
+    resolution =2
 
     plannification = Plannification()
     goal =  np.array([1.866 , -21.355])
@@ -884,13 +884,23 @@ if __name__ == '__main__':
     px, py = plannification.planning(ox, oy, resolution)
     rate = rospy.Rate(50.0)
 
+    #ouvre les logs pour tout effacer
+    print("initialisation log")
+    fichier = open("log_position.txt", "w")
+    fichier.write("-time---------------X------------------Y------------------Z------------------yaw------------------\n")
+    fichier.close()
+    #ouvre start_pose pour tout effacer 
+    fichier = open("start_pose.txt", "w")
+    fichier.close()
+
+
     while not rospy.is_shutdown():
 
         # print(bluerov.get_all_msgs())
         
         # bluerov.set_target_depth(-5)
 
-        # print('TARGET DEPTH SET')
+        # print('TARGET DEPTH SET')²
 
         # position_desired = [-10.0, -10.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 

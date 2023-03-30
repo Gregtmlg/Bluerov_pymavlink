@@ -5,12 +5,14 @@ from pymavlink.quaternion import QuaternionBase
 import math
 import time
 import numpy as np
-
+import mission_part_2 as ms
 from Gridy_based import Plannification
 from dynamic_window_approach import Evitement
-
+from datetime import datetime
 from sensor_msgs.msg import LaserScan
+import historique_rov as hts_rov
 import rospy
+
 
 class Bridge(object):
     """ MAVLink bridge
@@ -31,7 +33,7 @@ class Bridge(object):
 
         self.conn.wait_heartbeat()
         print("Heartbeat from system (system %u component %u)" % (self.conn.target_system, self.conn.target_component))
-            
+
         self.data = {}
         self.current_pose = [0,0,0,0,0,0]
         self.mission_point = 0
@@ -42,6 +44,13 @@ class Bridge(object):
         self.scan_subscriber= rospy.Subscriber("/scan", LaserScan, self.scan_callback, queue_size=1)
         self.ok_pose = False
 
+        #flag pour savoir quand le parcour et terminer
+        self.flag_end=True
+        #flag d'ajoue de point 
+        self.flag_add_point=True
+        #conteur_start_pose pour l'enregistrement camera des points dinteret 
+        self.conteur_start_pose = 0
+        self.last_pos=0
 
     def scan_callback(self, data):
         self.scan = data
@@ -376,19 +385,43 @@ class Bridge(object):
             0, #roll rate
             0, #pitch rate
             0, 0)    # yaw rate, thrust 
-
+    
     def get_bluerov_position_data(self): #Loop comunicazione con QGROUND
         # Get some information !
-        self.update()
+        
+        
+        
         if 'LOCAL_POSITION_NED' in self.get_data():              
             
             local_position_data = self.get_data()['LOCAL_POSITION_NED']
+            local_oritentation_data = self.get_data()['ATTITUDE']
+            
             xyz_data = [local_position_data[i]  for i in ['x', 'y', 'z']]
+            log_ori_data = [local_oritentation_data[i]  for i in ['yaw']]
+            log_pos_data = [local_position_data[i]  for i in ['x', 'y', 'z']]
             self.current_pose[0:3] = [xyz_data[0], xyz_data[1], xyz_data[2]]
-            # print(xyz_data)
+            
+            
+            #print(xyz_data)
 
 
+            if self.last_pos!=log_pos_data[1] :
+                
+                fichier = open("log_position.txt", "a")
+                fichier.write(str(datetime.now().time()))
+                fichier.write(',')
+            
+                for i in range(0,3):
 
+                    fichier.write(str(log_pos_data[i]))
+                    fichier.write(",")
+
+                fichier.write(str(log_ori_data[0]))
+                fichier.write(",\n")
+                fichier.close()
+                self.last_pos=log_pos_data[1] 
+                
+                
         # waiting for 2 seconds after writing
         # the file
         # else:
@@ -406,13 +439,57 @@ class Bridge(object):
         current_pose = self.current_pose
         desired_position[0], desired_position[1] = px[self.mission_point], py[self.mission_point]
 
-        if abs(current_pose[0] - desired_position[0]) < 0.2 and abs(current_pose[1] - desired_position[1]) < 0.2:
+        if abs(current_pose[0] - desired_position[0]) < 0.2 and abs(current_pose[1] - desired_position[1]) < 0.2 and self.flag_end==True:
             print("Arrivé au point")
-            if self.mission_point == len(px):
-                self.ok_pose = True
+            
             self.mission_point += 1
-            desired_position[0], desired_position[1] = px[self.mission_point], py[self.mission_point]
-            self.mission_point_sent = False
+            print( str(self.mission_point) + ' sur ' + str(len(px)-1))
+            
+            if self.mission_point > len(px)-1 and self.flag_add_point==True:
+
+
+                x,y=ms.coordonees_part_2()
+
+                for i in range(0,len(x)) :
+                    px.append(x[i])
+                    py.append(y[i])
+                
+                
+                self.flag_add_point=False
+            
+            if self.flag_add_point==False :
+
+                if  self.conteur_start_pose==0 :
+
+                    self.conteur_start_pose=1
+
+                else :
+
+                    if self.conteur_start_pose%2 != 0 :
+
+                        print("start")
+                        fichier = open("start_pose.txt", "w")
+                        fichier.write("start")
+                        fichier.write(',\n')
+                        fichier.close()
+                        self.conteur_start_pose = self.conteur_start_pose + 1
+                    else :
+
+                        print("stop")
+                        fichier = open("start_pose.txt", "w")
+                        fichier.write("stop")
+                        fichier.write(',\n')
+                        fichier.close()
+                        self.conteur_start_pose = self.conteur_start_pose + 1
+
+            if self.mission_point == len(px) and  self.flag_add_point==False:
+                self.ok_pose = True
+                
+            else  :
+                #print("x, y = "+ str(px[self.mission_point])+','+ str(py[self.mission_point]))
+                desired_position[0], desired_position[1] = px[self.mission_point], py[self.mission_point]
+                self.mission_point_sent = False
+
 
         if self.mission_point_sent == False:
             time.sleep(0.05)
@@ -421,11 +498,16 @@ class Bridge(object):
             time.sleep(0.05)
             self.mission_point_sent = True
 
-        if self.ok_pose == True :
-            print('Mission terminée')
-            self.mission_point = 0
-            self.mission_point_sent = False
 
+        if self.ok_pose == True :
+            
+            if self.flag_end==True :
+                print('Mission terminée')
+                self.mission_point = 0
+                self.mission_point_sent = False 
+                self.flag_end=False
+                #hts_rov.dessin_historique()
+           
         
     def do_evit(self, evitement, x_init, goal):
 
