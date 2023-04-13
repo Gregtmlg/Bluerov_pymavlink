@@ -17,6 +17,7 @@ import threading
 from Gridy_based import Plannification
 from dynamic_window_approach import Evitement
 from sensor_msgs.msg import LaserScan
+import attitude_control
 
 try:
     from pubs import Pubs
@@ -146,7 +147,7 @@ class BlueRov(Bridge):
                 '/local_position',
                 PoseStamped,
                 1
-            ]
+            ],
             # [
             #     self._create_battery_msg,
             #     '/battery',
@@ -171,12 +172,12 @@ class BlueRov(Bridge):
         #         Imu,
         #         1
         #     ],
-        #     [
-        #         self._create_odometry_msg,
-        #         '/odometry',
-        #         Odometry,
-        #         1
-        #     ],
+            [
+                self._create_odometry_msg,
+                '/odometry',
+                Odometry,
+                1
+            ]
         #     # [
         #     #     self._create_bar30_msg,
         #     #     '/bar30',
@@ -427,6 +428,7 @@ class BlueRov(Bridge):
         # http://mavlink.org/messages/common#LOCAL_POSITION_NED
         local_position_data = self.get_data()['LOCAL_POSITION_NED']
         xyz_data = [local_position_data[i]  for i in ['x', 'y', 'z']]
+        vxyz_data = [local_position_data[i]  for i in ['vx', 'vy', 'z']]
         msg.pose.position.x = xyz_data[0]
         msg.pose.position.y = xyz_data[1]
         msg.pose.position.z = - xyz_data[2]
@@ -437,18 +439,24 @@ class BlueRov(Bridge):
         orientation = [attitude_data[i] for i in ['roll', 'pitch', 'yaw']]
 
         #https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles#Euler_Angles_to_Quaternion_Conversion
-        cy = math.cos(orientation[2] * 0.5)
-        sy = math.sin(orientation[2] * 0.5)
+
         cr = math.cos(orientation[0] * 0.5)
         sr = math.sin(orientation[0] * 0.5)
         cp = math.cos(orientation[1] * 0.5)
         sp = math.sin(orientation[1] * 0.5)
+        cy = math.cos(orientation[2] * 0.5)
+        sy = math.sin(orientation[2] * 0.5)
 
 
-        msg.pose.orientation.w = cy * cr * cp + sy * sr * sp
-        msg.pose.orientation.x = cy * sr * cp - sy * cr * sp
-        msg.pose.orientation.y = cy * cr * sp + sy * sr * cp
-        msg.pose.orientation.z = sy * cr * cp - cy * sr * sp 
+        # msg.pose.orientation.w = cy * cr * cp + sy * sr * sp
+        # msg.pose.orientation.x = cy * sr * cp - sy * cr * sp
+        # msg.pose.orientation.y = cy * cr * sp + sy * sr * cp
+        # msg.pose.orientation.z = sy * cr * cp - cy * sr * sp
+        # on envoie Yaw Pitch Raw à la place du quaternion
+        msg.pose.orientation.w = 1
+        msg.pose.orientation.x = math.degrees(orientation[0])
+        msg.pose.orientation.y = math.degrees(orientation[1])
+        msg.pose.orientation.z = math.degrees(orientation[2])
         
         self.pub.set_data('/local_position', msg)
 
@@ -491,58 +499,58 @@ class BlueRov(Bridge):
 
     #     self.pub.set_data('/imu/attitude',msg)
 
-    # def _create_odometry_msg(self):
-    #     """ Create odometry message from ROV information
+    def _create_odometry_msg(self):
+        """ Create odometry message from ROV information
 
-    #     Raises:
-    #         Exception: No data to create the message
-    #     """
+        Raises:
+            Exception: No data to create the message
+        """
 
-    #     # Check if data is available
-    #     if 'LOCAL_POSITION_NED' not in self.get_data():
-    #         raise Exception('no LOCAL_POSITION_NED data')
+        # Check if data is available
+        if 'LOCAL_POSITION_NED' not in self.get_data():
+            raise Exception('no LOCAL_POSITION_NED data')
 
-    #     if 'ATTITUDE' not in self.get_data():
-    #         raise Exception('no ATTITUDE data')
+        if 'ATTITUDE' not in self.get_data():
+            raise Exception('no ATTITUDE data')
 
-    #     #TODO: Create class to deal with BlueRov state
-    #     msg = Odometry()
+        #TODO: Create class to deal with BlueRov state
+        msg = Odometry()
 
-    #     self._create_header(msg)
+        self._create_header(msg)
 
-    #     #http://mavlink.org/messages/common#LOCAL_POSITION_NED
-    #     local_position_data = self.get_data()['LOCAL_POSITION_NED']
-    #     xyz_data = [local_position_data[i]  for i in ['x', 'y', 'z']]
-    #     vxyz_data = [local_position_data[i]  for i in ['vx', 'vy', 'z']]
-    #     msg.pose.pose.position.x = xyz_data[0]
-    #     msg.pose.pose.position.y = xyz_data[1]
-    #     msg.pose.pose.position.z = xyz_data[2]
-    #     msg.twist.twist.linear.x = vxyz_data[0]/100
-    #     msg.twist.twist.linear.y = vxyz_data[1]/100
-    #     msg.twist.twist.linear.z = vxyz_data[2]/100
+        #http://mavlink.org/messages/common#LOCAL_POSITION_NED
+        local_position_data = self.get_data()['LOCAL_POSITION_NED']
+        xyz_data = [local_position_data[i]  for i in ['x', 'y', 'z']]
+        vxyz_data = [local_position_data[i]  for i in ['vx', 'vy', 'z']]
+        msg.pose.pose.position.x = xyz_data[0]
+        msg.pose.pose.position.y = xyz_data[1]
+        msg.pose.pose.position.z = xyz_data[2]
+        msg.twist.twist.linear.x = vxyz_data[0]/100
+        msg.twist.twist.linear.y = vxyz_data[1]/100
+        msg.twist.twist.linear.z = vxyz_data[2]/100
 
-    #     #http://mavlink.org/messages/common#ATTITUDE
-    #     attitude_data = self.get_data()['ATTITUDE']
-    #     orientation = [attitude_data[i] for i in ['roll', 'pitch', 'yaw']]
-    #     orientation_speed = [attitude_data[i] for i in ['rollspeed', 'pitchspeed', 'yawspeed']]
+        #http://mavlink.org/messages/common#ATTITUDE
+        attitude_data = self.get_data()['ATTITUDE']
+        orientation = [attitude_data[i] for i in ['roll', 'pitch', 'yaw']]
+        orientation_speed = [attitude_data[i] for i in ['rollspeed', 'pitchspeed', 'yawspeed']]
 
-    #     #https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles#Euler_Angles_to_Quaternion_Conversion
-    #     cy = math.cos(orientation[2] * 0.5)
-    #     sy = math.sin(orientation[2] * 0.5)
-    #     cr = math.cos(orientation[0] * 0.5)
-    #     sr = math.sin(orientation[0] * 0.5)
-    #     cp = math.cos(orientation[1] * 0.5)
-    #     sp = math.sin(orientation[1] * 0.5)
+        #https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles#Euler_Angles_to_Quaternion_Conversion
+        cy = math.cos(orientation[2] * 0.5)
+        sy = math.sin(orientation[2] * 0.5)
+        cr = math.cos(orientation[0] * 0.5)
+        sr = math.sin(orientation[0] * 0.5)
+        cp = math.cos(orientation[1] * 0.5)
+        sp = math.sin(orientation[1] * 0.5)
 
-    #     msg.pose.pose.orientation.w = cy * cr * cp + sy * sr * sp
-    #     msg.pose.pose.orientation.x = cy * sr * cp - sy * cr * sp
-    #     msg.pose.pose.orientation.y = cy * cr * sp + sy * sr * cp
-    #     msg.pose.pose.orientation.z = sy * cr * cp - cy * sr * sp
-    #     msg.twist.twist.angular.x = orientation_speed[0]
-    #     msg.twist.twist.angular.y = orientation_speed[1]
-    #     msg.twist.twist.angular.z = orientation_speed[2]
+        msg.pose.pose.orientation.w = cy * cr * cp + sy * sr * sp
+        msg.pose.pose.orientation.x = cy * sr * cp - sy * cr * sp
+        msg.pose.pose.orientation.y = cy * cr * sp + sy * sr * cp
+        msg.pose.pose.orientation.z = sy * cr * cp - cy * sr * sp
+        msg.twist.twist.angular.x = orientation_speed[0]
+        msg.twist.twist.angular.y = orientation_speed[1]
+        msg.twist.twist.angular.z = orientation_speed[2]
 
-    #     self.pub.set_data('/odometry', msg)
+        self.pub.set_data('/odometry', msg)
 
     # def _create_imu_msg(self):
     #     """ Create imu message from ROV data
@@ -727,98 +735,6 @@ class BlueRov(Bridge):
 
 
 
-import threading
-import time
- 
-# # Inheriting the base class 'Thread'
-# class AsyncWrite(threading.Thread):
- 
-#     def __init__(self, robot):
- 
-#         # calling superclass init
-#         threading.Thread.__init__(self)
-#         self.bluerov = robot
- 
-#     def run(self):
-#         while True :
-#             self.bluerov.update()
-#             self.bluerov.publish()
-#             if 'LOCAL_POSITION_NED' in self.bluerov.get_data():                
-                
-#                 local_position_data = self.bluerov.get_data()['LOCAL_POSITION_NED']
-#                 xyz_data = [local_position_data[i]  for i in ['x', 'y', 'z']]
-#                 self.bluerov.current_pose[0:3] = [xyz_data[0], xyz_data[1], xyz_data[2]]
-#                 print(xyz_data)
-
-
-    
-#             # waiting for 2 seconds after writing
-#             # the file
-#             else:
-#                 print("no local position ned")
-#             # time.sleep(2)
-#             # print("Finished background file write to",
-#             #                                  self.out)
-
-# # Inheriting the base class 'Thread'
-# class MissionThread(threading.Thread):
- 
-#     def __init__(self, robot, position_desired, ox, oy, oz, resolution):
- 
-#         # calling superclass init
-#         threading.Thread.__init__(self)
-#         self.bluerov = robot
-#         self.desired_position = position_desired
-#         self.ok_pose = False
-#         self.px = []
-#         self.py = []
-#         self.ox = ox
-#         self.oy = oy
-#         self.oz = oz
-#         self.resolution = resolution
-    
-#     def run(self):
-
-#         self.do_scan()
-
-
-#     def do_scan(self):
-#         plannification = Plannification()
-
-#         self.px, self.py = plannification.planning(self.ox, self.oy, self.resolution)
-
-#         next_point = 0
-
-#         while(1):
-
-
-
-#             current_pose = self.bluerov.current_pose
-#             self.desired_position[0], self.desired_position[1] = self.px[next_point], self.py[next_point]
-
-#             if abs(current_pose[0] - self.desired_position[0]) < 0.2 and abs(current_pose[1] - self.desired_position[1]) < 0.2:
-#                 if next_point == len(self.px):
-#                     self.ok_pose = True
-#                 next_point += 1
-
-#             else :
-#                 self.ok_pose = False
-#                 bluerov.set_position_target_local_ned(position_desired)
-
-#             if self.ok_pose == True :
-#                 print('Mission terminée')
-#                 break
-
-                
- 
-        # waiting for 2 seconds after writing
-        # the file
-        # time.sleep(2)
-        # print("Finished background file write to",
-        #                                  self.out)
-
-
-
 if __name__ == '__main__':
     try:
         rospy.init_node('user_node', log_level=rospy.DEBUG)
@@ -827,47 +743,11 @@ if __name__ == '__main__':
         exit(1)
     bluerov = BlueRov(device='udp:localhost:14551')
 
-
-
-
-    # background = AsyncWrite(bluerov)
-    # background.start()
-     
-    # print("The program can continue while it writes")
-    # print("in another thread")
-    # print("100 + 400 = ", 100 + 400)
- 
-    # # wait till the background thread is done
-    # # background.join()
-    # print("Waited until thread was complete")
-
     # ox = [0.0, 10.0, 10.0, 0.0, 0.0]
     # oy = [0.0, 0.0, 30.0, 30.0, 0.0]
     # oz = [5]
     # resolution = 2
 
-    # position_desired = [-10.0, -10.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-
-    # control = MissionThread(bluerov, position_desired, ox, oy, oz, resolution)
-    # control.start()
-
-    # wait till the control thread is done
-    # control.join()
-
-
-
-
-    # Mavlink1=threading.Thread(name='QGround Loop', target=bluerov.get_bluerov_data) #tre righe per i thread
-    # Mavlink1.deamon=True
-    # Mavlink1.start()
-
-    # print("thread mavlink1 launched")
-
-    # control=threading.Thread(name='control Loop', target=bluerov.loop_control) #tre righe per i thread
-    # control.deamon=True
-    # control.start()
-
-    # print('thread control launched')
     change_mode = 0
 
     ox = [1.866, 10.44, 1.9, -7.12, 1.866]
@@ -876,49 +756,69 @@ if __name__ == '__main__':
     resolution = 1
 
     plannification = Plannification()
-    goal =  np.array([1.866 , -21.355])
+    goal =  np.array([-47.96 , -11.19])
     evitement = Evitement(goal)
 
-    x_init = [19.015, -11, -7.409]
+    x_init = [-37.77, -11.42, -7.409]
 
     px, py = plannification.planning(ox, oy, resolution)
     rate = rospy.Rate(50.0)
 
+    yaw_path=150
+    yaw_send = False
+
+    # position_desired = [0, 0, 0, 0.5, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2]
+    counter = 0
+    position_desired = [-100.0, -100.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
     while not rospy.is_shutdown():
 
-        # print(bluerov.get_all_msgs())
-        
-        # bluerov.set_target_depth(-5)
-
-        # print('TARGET DEPTH SET')
-
-        # position_desired = [-10.0, -10.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-
-        # bluerov.set_position_target_local_ned(position_desired)
-
-        bluerov.get_bluerov_position_data()
+        bluerov.get_bluerov_data()
 
         # time.sleep(0.05)
         # evitement.goal_reached = True
 
-        # if evitement.goal_reached == False:
-        #     bluerov.do_evit(evitement, x_init, goal)
+        if evitement.goal_reached == False:
+            bluerov.do_evit(evitement, x_init, goal)
+
+        # if yaw_send == False:
+        #     attitude_control.set_target_attitude(bluerov.conn,0, 0, yaw_path)
 
         # elif bluerov.ok_pose == False:
         #     if change_mode == 0:
         #         bluerov.mission_sent_point = False
                 # change_mode += 1
-        bluerov.do_scan(px, py, oz)
+        # bluerov.do_scan(px, py, oz)
+
+        # yaw_path = (yaw_path+10)%360 
+
+        # bluerov.set_position_target_local_ned(position_desired)
+        # counter+=1
+
+        # if counter%10 == 0:
+        #     counter = 0
+        #     position_desired[0] += 5
+        #     position_desired[1] -= 5
+
+#############################TEST MOUVEMENT AVEC VITESSE ET ORIENTATION###########################
+
+        # bluerov.set_speed_and_attitude_target(position_desired)
+        # counter+=1
+
+        # if counter%10 == 0:
+        #     counter = 0
+        #     position_desired[9] += math.pi/4
+        #     print(position_desired[9])
+
+#################################################################################################
 
 
         # time.sleep(0.05)
+        # print(bluerov.get_velodyne_obstacle())
+        # print(bluerov.velodyne_data)
+        # bluerov.get_collider_obstacles()
 
         bluerov.publish()
-
-
-        # bluerov.set_target_attitude(0, 0, 330)
-
-        # print('TARGET ATTITUDE SET')
 
         # bluerov.do_scan([0, 0, 0], [10, 10, 0], 10)
         rate.sleep()

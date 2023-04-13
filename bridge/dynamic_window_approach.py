@@ -40,7 +40,7 @@ class Config:
 
     def __init__(self):
         # robot parameter
-        self.max_speed = 1.0  # [m/s]
+        self.max_speed = 1  # [m/s]
         self.min_speed = -0.5  # [m/s]
         self.max_yaw_rate = 40.0 * math.pi / 180.0  # [rad/s]
         self.max_accel = 0.2  # [m/ss]
@@ -53,33 +53,45 @@ class Config:
         self.speed_cost_gain = 1.0
         self.obstacle_cost_gain = 1.0
         self.robot_stuck_flag_cons = 0.001  # constant to prevent robot stucked
-        self.robot_type = RobotType.circle
+        self.robot_type = RobotType.rectangle
 
         # if robot_type == RobotType.circle
         # Also used to check if goal is reached in both types
-        self.robot_radius = 1.0  # [m] for collision check
+        self.robot_radius = 0.6  # [m] for collision check
 
         # if robot_type == RobotType.rectangle
-        self.robot_width = 0.5  # [m] for collision check
-        self.robot_length = 1.2  # [m] for collision check
+        self.robot_width = 0.70  # [m] for collision check
+        self.robot_length = 0.60 # [m] for collision check
         # obstacles [x(m) y(m), ....]
-        self.ob = np.array([[-1, -1],
-                            [0, 2],
-                            [4.0, 2.0],
-                            [5.0, 4.0],
-                            [5.0, 5.0],
-                            [5.0, 6.0],
-                            [5.0, 9.0],
-                            [8.0, 9.0],
-                            [7.0, 9.0],
-                            [8.0, 10.0],
-                            [9.0, 11.0],
-                            [12.0, 13.0],
-                            [12.0, 12.0],
-                            [15.0, 15.0],
-                            [13.0, 13.0]
-                            ])
-        # self.ob = np.array([[]])
+        # self.ob = np.array([[-1, -1],
+        #                     [0, 2],
+        #                     [4.0, 2.0],
+        #                     [5.0, 4.0],
+        #                     [5.0, 5.0],
+        #                     [5.0, 6.0],
+        #                     [5.0, 9.0],
+        #                     [8.0, 9.0],
+        #                     [7.0, 9.0],
+        #                     [8.0, 10.0],
+        #                     [9.0, 11.0],
+        #                     [12.0, 13.0],
+        #                     [12.0, 12.0],
+        #                     [15.0, 15.0],
+        #                     [13.0, 13.0]
+        #                     ])
+        # self.ob = np.array([[-41.45, -12.320],# Pilonne 1
+        #                     [-41.233, -12.561],
+        #                     [-40.959, -12.320],
+        #                     [-41.226, -12.062],
+        #                     [-42.729, -9.5319],# Pilonne 2
+        #                     [-42.955, -9.29],
+        #                     [-42.731, -9.033],
+        #                     [-42.464, -9.291],
+        #                     [-45.288, -11.621],# Pilonne 3
+        #                     [-45.505, -11.380],
+        #                     [-45.281, -11.123],
+        #                     [-45.014, -11.380]])
+        self.ob = np.array([[]])
 
     @property
     def robot_type(self):
@@ -170,7 +182,8 @@ def calc_control_and_trajectory(x, dw, config, goal, ob):
             else :
                 ob_cost = config.obstacle_cost_gain * calc_obstacle_cost(trajectory, ob, config)
 
-            final_cost = to_goal_cost + speed_cost + ob_cost
+            final_cost = to_goal_cost + ob_cost + speed_cost
+            # final_cost = to_goal_cost + speed_cost + ob_cost
 
             # search minimum trajectory
             if min_cost >= final_cost:
@@ -184,6 +197,7 @@ def calc_control_and_trajectory(x, dw, config, goal, ob):
                     # best omega=0 rad/s (heading to the goal with
                     # angle difference of 0)
                     best_u[1] = -config.max_delta_yaw_rate
+    print(min_cost)
     return best_u, best_trajectory
 
 
@@ -265,7 +279,7 @@ def plot_robot(x, y, yaw, config):  # pragma: no cover
 
 class Evitement():
 
-    def __init__(self, goal, robot_type=RobotType.rectangle):
+    def __init__(self, goal, robot_type=RobotType.circle):
         self.config = Config()
         self.config.robot_type = robot_type
         self.goal = goal
@@ -275,8 +289,8 @@ class Evitement():
         x_repaire = x
         # while abs(x_repaire[0] - x[0]) < 0.2 or abs(x_repaire[1] - x[1]) < 0.2:
         u, predicted_trajectory = dwa_control(x, self.config, self.goal, ob)
-        print(u)
         x = motion(x, u, self.config.dt)  # simulate robot
+        # print(x)
         dist_to_goal = math.hypot(x[0] - self.goal[0], x[1] - self.goal[1])
         if dist_to_goal <= config.robot_radius:
             print("Goal!!")
@@ -286,14 +300,10 @@ class Evitement():
         # return rx, ry
     
 
-
-
-
-
-def main(gx=10,  gy=15, robot_type=RobotType.circle):
+def main(gx=-47.96,  gy=-11.19, robot_type=RobotType.rectangle):
     print(__file__ + " start!!")
     # initial state [x(m), y(m), yaw(rad), v(m/s), omega(rad/s)]
-    x = np.array([0, 0, math.pi / 8.0, 0.0, 0.0])
+    x = np.array([-37.77, -11.42, math.pi, 0.0, 0.0])
     # goal position [x(m), y(m)]
     goal = np.array([gx, gy])
 
@@ -346,7 +356,6 @@ def main(gx=10,  gy=15, robot_type=RobotType.circle):
 
     plt.show()
 
-
 if __name__ == '__main__':
-    main(robot_type=RobotType.circle)
+    main(robot_type=RobotType.rectangle)
     # main(robot_type=RobotType.circle)

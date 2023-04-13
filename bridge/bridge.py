@@ -5,11 +5,13 @@ from pymavlink.quaternion import QuaternionBase
 import math
 import time
 import numpy as np
+# from .. import attitude_control
 
 from Gridy_based import Plannification
 from dynamic_window_approach import Evitement
 
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import LaserScan, PointCloud2, PointCloud
+import sensor_msgs.point_cloud2 as pc2
 import rospy
 
 class Bridge(object):
@@ -33,18 +35,62 @@ class Bridge(object):
         print("Heartbeat from system (system %u component %u)" % (self.conn.target_system, self.conn.target_component))
             
         self.data = {}
-        self.current_pose = [0,0,0,0,0,0]
+        # [x, y, z] selon EKF
+        self.current_pose = [0,0,0]
+        # [roll, pitch, yaw] en radians
+        self.current_attitude = [0,0,0]
+        # [vx, vy, vz] en m/s
+        self.current_vel = [0,0,0]
+        self.ob = np.array([[]])
         self.mission_point = 0
         self.mission_point_sent = False
         self.init_evit = False
         self.x_evit = np.array([])
         self.scan = LaserScan()
+        self.obstacles_colliders = PointCloud()
         self.scan_subscriber= rospy.Subscriber("/scan", LaserScan, self.scan_callback, queue_size=1)
+        self.velodyne_subscriber= rospy.Subscriber("/velodyne_points", PointCloud2, self.velodyne_callback, queue_size=1)
+        self.scan_subscriber= rospy.Subscriber("/BlueRov2/obstacles", PointCloud, self.collider_callback, queue_size=100)
         self.ok_pose = False
 
+        # Dimension observations velodyne
+        self.environment_dim = 20
+        self.velodyne_data = np.ones(self.environment_dim) * 10
+        self.gaps = [[-np.pi / 2 - 0.03, -np.pi / 2 + np.pi / self.environment_dim]]
+        for m in range(self.environment_dim - 1):
+            self.gaps.append(
+                [self.gaps[m][1], self.gaps[m][1] + np.pi / self.environment_dim]
+            )
+        self.gaps[-1][-1] += 0.03
+
+        self.vfh_sector_angle = 1.0
+        self.vfh_sector_angles = np.linspace(-45 + 90/(90*2), 45 + 90/(90*2), 90)
+        self.vfh_sector_range = 5.0
+
+
+    def velodyne_callback(self, v):
+        data = list(pc2.read_points(v, skip_nans=False, field_names=("x", "y", "z")))
+        self.velodyne_data = np.ones(self.environment_dim) * 10
+        for i in range(len(data)):
+            if data[i][2] > -0.2:
+                dot = data[i][0] * 1 + data[i][1] * 0
+                mag1 = math.sqrt(math.pow(data[i][0], 2) + math.pow(data[i][1], 2))
+                mag2 = math.sqrt(math.pow(1, 2) + math.pow(0, 2))
+                beta = math.acos(dot / (mag1 * mag2)) * np.sign(data[i][1])
+                dist = math.sqrt(data[i][0] ** 2 + data[i][1] ** 2 + data[i][2] ** 2)
+
+                for j in range(len(self.gaps)):
+                    if self.gaps[j][0] <= beta < self.gaps[j][1]:
+                        self.velodyne_data[j] = min(self.velodyne_data[j], dist)
+                        break
 
     def scan_callback(self, data):
         self.scan = data
+
+    def collider_callback(self, data):
+        self.obstacles_colliders = data
+
+    #################################### Fonctions commandes MAVLINK ###############################
 
     def get_data(self):
         """ Return data
@@ -206,21 +252,12 @@ class Bridge(object):
         if len(param) != 11:
             print('SET_POISITION_TARGET_GLOBAL_INT need 11 params')
 
-        
 
         while not self.is_armed():
             self.conn.arducopter_arm()
 
         self.conn.set_mode('GUIDED')
-        # Set mask
-        # mask = 0b0000000111111111
-        mask = 0b000111111000
-        # for i, value in enumerate(param):
-        #     if value is not None:
-        #         mask -= 1<<i
-        #     else:
-        #         param[i] = 0.0
-
+        mask = 0b10011111000
 
         #http://mavlink.org/messages/common#SET_POSITION_TARGET_GLOBAL_INT
         self.conn.mav.send(mavutil.mavlink.MAVLink_set_position_target_local_ned_message(10, self.conn.target_system, self.conn.target_component,
@@ -377,27 +414,24 @@ class Bridge(object):
             0, #pitch rate
             0, 0)    # yaw rate, thrust 
 
-    def get_bluerov_position_data(self): #Loop comunicazione con QGROUND
+    def get_bluerov_data(self): #Loop comunicazione con QGROUND
         # Get some information !
         self.update()
         if 'LOCAL_POSITION_NED' in self.get_data():              
             
             local_position_data = self.get_data()['LOCAL_POSITION_NED']
             xyz_data = [local_position_data[i]  for i in ['x', 'y', 'z']]
-            self.current_pose[0:3] = [xyz_data[0], xyz_data[1], xyz_data[2]]
+            self.current_pose = [xyz_data[0], xyz_data[1], xyz_data[2]]
             # print(xyz_data)
+            vxvyvz_data = [local_position_data[i]  for i in ['vx', 'vy', 'vz']]
+            self.current_vel = [vxvyvz_data[0], vxvyvz_data[1], vxvyvz_data[2]]
+            attitude_data = self.get_data()['ATTITUDE']
+            orientation = [attitude_data[i] for i in ['roll', 'pitch', 'yaw']]
+            self.current_attitude = [orientation[0], orientation[1], orientation[2]]
 
+    ###################################### Fin fonctions commandes MAVLINK #############################################
 
-
-        # waiting for 2 seconds after writing
-        # the file
-        # else:
-        #     print("no local position ned")
-        # time.sleep(2)
-        # print("Finished background file write to",
-        #                                  self.out)  
-
-
+    ###################################### Fonctions de missions #######################################################
 
     def do_scan(self, px, py, oz):
 
@@ -436,7 +470,7 @@ class Bridge(object):
             if self.mission_point_sent == False:
                 time.sleep(0.05)
                 self.ok_pose = False
-                initial_position = [x_init[0], x_init[1], -z_mission, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+                initial_position = [x_init[0], x_init[1], -z_mission, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -2.88, 0.0]
                 self.set_position_target_local_ned(initial_position)
                 time.sleep(0.05)
                 self.mission_point_sent = True
@@ -444,201 +478,164 @@ class Bridge(object):
             if abs(self.current_pose[0] - x_init[0]) < 0.2 and abs(self.current_pose[1] - x_init[1]) < 0.2:
                 self.init_evit = True
                 print("je suis au point initial")
-                self.x = np.array([x_init[0], x_init[1], math.pi / 8.0, 0.0, 0.0])
+                self.x = np.array([x_init[0], x_init[1], self.current_attitude[2], 0.0, 0.0])
                 self.mission_point_sent = False
 
 
 
-        
-        ob = self.get_obstacle(20)
+        # on observe les obstacles environnants
+        # self.ob = self.get_lidar_obstacle(90)
+        # self.ob = self.get_velodyne_obstacle()
 
         if self.init_evit == True:
+            # si on a commencé la mission d'évitement 
             # print("init_evit " + str(self.init_evit))
             if abs(self.current_pose[0] - self.x[0]) < 0.02 and abs(self.current_pose[1] - self.x[1]) < 0.02:
                 # print("avant do evit planning")
+                obstacles = self.get_collider_obstacles()
+                self.ob = np.array([[]])
+                compteur = 0
+                while obstacles.size == 0:
+                    obstacles = self.get_collider_obstacles()
+                    compteur+=1
+                    if obstacles.size > 0 or compteur > 150000:
+                        self.ob = obstacles
+                        break
+                print(compteur)
+                print("Final ", self.ob)
+
                 current_pose = np.array([self.current_pose[0], self.current_pose[1], self.x[2], self.x[3], self.x[4]])
-                print("entrée = " + str(self.x))
-                self.x = evitement.planning(ob, self.x)
+                # print("entrée = " + str(self.x))
+                self.x = evitement.planning(self.ob, self.x)
+                # self.x[2] = -self.x[2]
                 self.mission_point_sent = False
-                print("sortie = " + str(self.x))
+                print(self.x[0:2])
                 # print("self.current_pose = " + str(self.current_pose))
+                # return self.x, u, trajectory
 
             if self.mission_point_sent == False:
                 time.sleep(0.05)
                 self.ok_pose = False
-                desired_position = [self.x[0], self.x[1], -z_mission, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, self.x[3], self.x[4]]
+                desired_position = [self.x[0], self.x[1], -z_mission, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, self.x[2], self.x[4]]
                 self.set_position_target_local_ned(desired_position)
                 time.sleep(0.05)
                 self.mission_point_sent = True
+    ################################## Fin fonction de missions #####################################################
+
+    ################################## Fonctions de détection d'obstacles ###########################################
+    def get_collider_obstacles(self):
+        obstacles = np.array([[p.x, p.z] for p in self.obstacles_colliders.points])
+        # print(obstacles)
+        return obstacles
 
 
-        
+    def get_velodyne_obstacle(self):
 
+        inclinaison_lidar = 0
+        obstacle =  np.zeros((self.environment_dim,2))
+        velodyne_data = np.flip(self.velodyne_data, 0)
 
+        depart = -45 + 90/(self.environment_dim*2)
+        arrivee = 45 - 90/(self.environment_dim*2)
 
-    # def get_obstacle(self, decoupage):
-    #     scan_range = []
-    #     """
-    #         Pour un LaserScan avec un champ de visions de (-80,80)deg et 540 points
-    #     """
+        scan_zone_angles = np.linspace(depart, arrivee, self.environment_dim)
 
-    #     # scan = None
-    #     # while scan is None:
-    #     #     try:
-    #     #         scan = rospy.wait_for_message('/scan', LaserScan)
-    #     #     except:
-    #     #         pass
+        for i in range(self.environment_dim):
+            if velodyne_data[i] == 10:
+                obstacle[i, 0], obstacle[i, 1] = float("Inf"), float("Inf")
+            else :
+                obstacle_min_range = round(velodyne_data[i], 2)
+                obstacle_angle = math.radians(scan_zone_angles[i])
+                # print(scan_zone_angles[scan_zone_flag-1])
+                # on calcule tout d'abord les coordonnées de l'objet dans le repère relatif au robot
+                obstacle_rel_x = obstacle_min_range * math.cos(obstacle_angle)
+                obstacle_rel_y = obstacle_min_range * math.sin(obstacle_angle)
+                obstacle_rel_z = obstacle_min_range * math.sin(inclinaison_lidar)
+                # On définit ensuite la matrice de transformation homogène H du robot à partir de ses matrices de transposition T et rotation R
 
-    #     for i in range(len(self.scan.ranges)):
-    #         if self.scan.ranges[i] == float('Inf'):
-    #             scan_range.append(10)
-    #         elif np.isnan(self.scan.ranges[i]):
-    #             scan_range.append(0)
-    #         else:
-    #             scan_range.append(self.scan.ranges[i])
+                T = np.array([[1, 0, 0, self.current_pose[0]],
+                                [0, 1, 0, self.current_pose[1]], 
+                                [0, 0, 1, self.current_pose[2]],
+                                [0, 0, 0, 1]])
+                
+                R = np.array([[math.cos(self.current_attitude[1])*math.cos(self.current_attitude[2]), -math.cos(self.current_attitude[1])*math.sin(self.current_attitude[2]), math.sin(self.current_attitude[1]), 0],
+                                [math.sin(self.current_attitude[0])*math.sin(self.current_attitude[1])*math.cos(self.current_attitude[2])+math.cos(self.current_attitude[0])*math.sin(self.current_attitude[2]), -math.sin(self.current_attitude[0])*math.sin(self.current_attitude[1])*math.sin(self.current_attitude[2])+math.cos(self.current_attitude[0])*math.cos(self.current_attitude[2]), -math.sin(self.current_attitude[0])*math.cos(self.current_attitude[1]), 0],
+                                [-math.cos(self.current_attitude[0])*math.sin(self.current_attitude[1])*math.cos(self.current_attitude[2])+math.sin(self.current_attitude[0])*math.sin(self.current_attitude[2]), math.cos(self.current_attitude[0])*math.sin(self.current_attitude[1])*math.sin(self.current_attitude[2])+math.sin(self.current_attitude[0])*math.cos(self.current_attitude[2]), math.cos(self.current_attitude[0])*math.cos(self.current_attitude[1]), 0],
+                                [0, 0, 0, 1]])
+                
+                H = np.dot(T,R)
 
-    #     obstacle_min_range = round(min(scan_range), 2)
-    #     obstacle_angle = np.argmin(scan_range)
+                # On peut maintenant calculer la matrice de coordonnées de l'obstacle 
+                coord_obj_abs = np.dot(np.array([[obstacle_rel_x, obstacle_rel_y, obstacle_rel_z, 1]]), H)
+                obstacle[i, 0], obstacle[i, 1] = coord_obj_abs[0,0] + self.current_pose[0], coord_obj_abs[0,1] + self.current_pose[1]
+        return obstacle
 
-    #     obstacle_x = obstacle_min_range * math.cos(obstacle_angle)
-    #     obstacle_y = obstacle_min_range * math.sin(obstacle_angle)
-    #     # if min_range > min(scan_range) > 0:
-    #     #     done = True
-
-    #     if obstacle_x < 0.15 and obstacle_y < 0.15 :
-    #         return np.array([[]])
-
-
-    #     obstacle = np.array([[obstacle_x + self.current_pose[0], obstacle_y + self.current_pose[1]]])
-    #     # current_distance = round(math.hypot(self.goal_x - self.position.x, self.goal_y - self.position.y), 2)
-    #     # if current_distance < 0.2:
-    #     #     self.get_goalbox = True
-
-    #     return obstacle
-
-
-    def get_obstacle(self, decoupage):
+    def get_lidar_obstacle(self, decoupage):
+        """
+            Pour un LaserScan avec un champ de visions de (-80,80)deg et 540 points. 
+            On découpe le champ de vision en un certain nombre de zones (decoupage). 
+            On ne retiendra que les plus petites valeurs dans chaque zone.
+        """
+        inclinaison_lidar = 0
         obstacle =  np.zeros((decoupage,2))
-        """
-            Pour un LaserScan avec un champ de visions de (-80,80)deg et 540 points
-        """
         scan_increments = len(self.scan.ranges)
-        # scan = None
-        # while scan is None:
-        #     try:
-        #         scan = rospy.wait_for_message('/scan', LaserScan)
-        #     except:
-        #         pass
+
+        depart = -45 + 90/(decoupage*2)
+        arrivee = 45 - 90/(decoupage*2)
+
+        scan_zone_angles = np.linspace(depart, arrivee, decoupage)
         scan_zone_flag = 1
         min_range = []
 
         for i in range(scan_increments):
-
+            # on parcourt tous les lasers du lidar
+            # on ajoute les valeurs non nulles à la liste min_range
             if self.scan.ranges[i] != 0:
                 min_range.append(self.scan.ranges[i])
 
             if i == scan_zone_flag * (scan_increments / decoupage) -1:
+                # On a rassemblé toutes les valeurs d'une zone
                 if len(min_range) == 0:
+                    # Si toutes les valeurs de la zone étaient nulles (le lidar n'a rien détecté), alors on renvoie la valeur Inf
                     obstacle[scan_zone_flag - 1, 0], obstacle[scan_zone_flag - 1, 1] = float("Inf"), float("Inf")
                 else:
+                    # Sinon on calcule les coordonnées de l'objet détecté dans la zone 
                     obstacle_min_range = round(min(min_range), 2)
-                    obstacle_angle = np.argmin(min_range)
-                    obstacle_x = obstacle_min_range * math.cos(obstacle_angle)
-                    obstacle_y = obstacle_min_range * math.sin(obstacle_angle)
-                    obstacle[scan_zone_flag - 1, 0], obstacle[scan_zone_flag - 1, 1] = obstacle_x + self.current_pose[0], obstacle_y + self.current_pose[1]
+                    obstacle_angle = math.radians(scan_zone_angles[scan_zone_flag-1])
+                    # print(scan_zone_angles[scan_zone_flag-1])
+                    # on calcule tout d'abord les coordonnées de l'objet dans le repère relatif au robot
+                    obstacle_rel_x = obstacle_min_range * math.cos(obstacle_angle)
+                    obstacle_rel_y = obstacle_min_range * math.sin(obstacle_angle)
+                    obstacle_rel_z = obstacle_min_range * math.sin(inclinaison_lidar)
+                    # On définit ensuite la matrice de transformation homogène H du robot à partir de ses matrices de transposition T et rotation R
+
+                    T = np.array([[1, 0, 0, self.current_pose[0]],
+                                   [0, 1, 0, self.current_pose[1]], 
+                                   [0, 0, 1, self.current_pose[2]],
+                                   [0, 0, 0, 1]])
+                    
+                    R = np.array([[math.cos(self.current_attitude[1])*math.cos(self.current_attitude[2]), -math.cos(self.current_attitude[1])*math.sin(self.current_attitude[2]), math.sin(self.current_attitude[1]), 0],
+                                  [math.sin(self.current_attitude[0])*math.sin(self.current_attitude[1])*math.cos(self.current_attitude[2])+math.cos(self.current_attitude[0])*math.sin(self.current_attitude[2]), -math.sin(self.current_attitude[0])*math.sin(self.current_attitude[1])*math.sin(self.current_attitude[2])+math.cos(self.current_attitude[0])*math.cos(self.current_attitude[2]), -math.sin(self.current_attitude[0])*math.cos(self.current_attitude[1]), 0],
+                                  [-math.cos(self.current_attitude[0])*math.sin(self.current_attitude[1])*math.cos(self.current_attitude[2])+math.sin(self.current_attitude[0])*math.sin(self.current_attitude[2]), math.cos(self.current_attitude[0])*math.sin(self.current_attitude[1])*math.sin(self.current_attitude[2])+math.sin(self.current_attitude[0])*math.cos(self.current_attitude[2]), math.cos(self.current_attitude[0])*math.cos(self.current_attitude[1]), 0],
+                                  [0, 0, 0, 1]])
+                    
+                    H = np.dot(T,R)
+
+                    # On peut maintenant calculer la matrice de coordonnées de l'obstacle 
+                    coord_obj_abs = np.dot(np.array([[obstacle_rel_x, obstacle_rel_y, obstacle_rel_z, 1]]), H)
+                    obstacle[scan_zone_flag - 1, 0], obstacle[scan_zone_flag - 1, 1] = coord_obj_abs[0,0] + self.current_pose[0], coord_obj_abs[0,1] + self.current_pose[1]
                 min_range = []
                 scan_zone_flag += 1
 
-        # if min_range > min(scan_range) > 0:
-        #     done = True
-
-        # current_distance = round(math.hypot(self.goal_x - self.position.x, self.goal_y - self.position.y), 2)
-        # if current_distance < 0.2:
-        #     self.get_goalbox = True
+                # R = | cos(Pitch)*cos(Yaw) -cos(Pitch)*sin(Yaw) sin(Pitch) 0 |
+                #     | sin(Roll)*sin(Pitch)*cos(Yaw)+cos(Roll)*sin(Yaw) -sin(Roll)*sin(Pitch)*sin(Yaw)+cos(Roll)*cos(Yaw) -sin(Roll)*cos(Pitch) 0 |
+                #     | -cos(Roll)*sin(Pitch)*cos(Yaw)+sin(Roll)*sin(Yaw) cos(Roll)*sin(Pitch)*sin(Yaw)+sin(Roll)*cos(Yaw) cos(Roll)*cos(Pitch) 0 |
+                #     | 0 0 0 1 |   
 
         return obstacle
-
-
-    def loop_control(self):
-	
-
-        #print('ok')
-        ok_z=False
-        ok_yaw=False
-        ok_xy=False
-        #yaw_temp=100
-        self.conn.set_mode('GUIDED')
-
-
-        while(1):
-            while not self.is_armed():
-                self.conn.arducopter_arm()
-        #leggo i miei dati
-            x_rov=self.current_pose[0]
-            y_rov=self.current_pose[1]
-            z_rov=self.current_pose[2]
-            roll_rov=self.current_pose[3]
-            pitch_rov=self.current_pose[4]
-            yaw_rov=math.degrees(self.current_pose[5])
-            # if yaw_rov<0:
-            #     yaw_ok=yaw_rov+360
-            # else:
-            #     yaw_ok=yaw_rov
-
-
-
+    ############################################################ Fin fonction détection d'obstacles ##############################################
         
-    #		diff_x=u_rovpos[0]-z_utm_des[0]
-    #		diff_y=u_rovpos[1]-z_utm_des[1]
-    #		dist = sqrt((diff_x)^2+(diff_y)^2)
-
-            #yaw_path=degrees(atan2(diff_y,diff_x))
-            # yaw_path=330
-
-            # z_utm_des=desideredPosition()		
-            
-            # diff_z= z_utm_des[2] + z_rov
-            # #print(z_utm_des[2],diff_z,z_rov)
-            # if abs(diff_z) <= 0.2:
-            #     ok_z=True
-            #     print('ok depth')
-            # else:
-            #     ok_z=False
-            #     attitudeControl.set_target_depth(z_utm_des[2],master)
-            
-            # #print(z_rov,yaw_rov)
-            # if ok_z == True and ok_yaw==False:
-            #     attitudeControl.set_target_attitude(master,0, 0, yaw_path)
-            
-            # diff_yaw= yaw_path - yaw_ok
-                
-            # if abs(diff_yaw) <= 5:
-            #     ok_yaw=True
-            #     print('yaw_ok')
-            # else:
-            #     ok_yaw=False
-
-            # time.sleep(0.01)
-            
-            # if ok_z== True and ok_yaw==True and ok_xy==False:
-            #     print('avanza')
-            #     #u_x=pidRov.main(dist)
-            #     master.mav.manual_control_send( #x - y- z - r - button 
-            #     master.target_system, #x,y and r will be between [-1000 and 1000].
-            #     500, # x, da sostituire con un pid . 
-            #     0, #y
-            #     500, #la Z va da -1000 a 1000, quindi 500 è ferma
-            #     0, #r è lo yaw
-            #     0)
-            # else:
-            #     master.mav.manual_control_send( #x - y- z - r - button 
-            #     master.target_system, #x,y and r will be between [-1000 and 1000].
-            #     0, # x, da sostituire con un pid . 
-            #     0, #y
-            #     500, #la Z va da -1000 a 1000, quindi 500 è ferma
-            #     0, #r è lo yaw
-      
-
+################################################################ Fin classe Bridge ###############################################################
 
 if __name__ == '__main__':
     bridge = Bridge()
