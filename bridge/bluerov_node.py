@@ -395,7 +395,31 @@ class BlueRov(Bridge):
     #         None,
     #         ]
     #     self.set_attitude_target(params)
+   
 
+    def gps2ned(point_gps_x, point_gps_y) :
+
+        #prend le premier X Y pour points de référence ned 0,0 pour calculer les autres point 
+        lat_ref=point_gps_x[0]
+        lon_ref=point_gps_y[0]
+        alt_ref=0
+
+
+        #¢reation des listes qui vont recevoire les coordonnées
+        point_ned_x=[]
+        point_ned_y=[]
+
+        #calculer de transformation de GPS a NED puis ajouter dans les listes 
+        for i in range(1,len(point_gps_x)) : 
+
+            x,y,z=navpy.lla2ned(point_gps_x[i],point_gps_y[i],0 ,lat_ref , lon_ref,alt_ref, latlon_unit='deg', alt_unit='m', model='wgs84')
+            point_ned_x.append(x)
+            point_ned_y.append(y)
+            
+
+        #retour des points NED
+        return point_ned_x,point_ned_y
+    
     def _create_header(self, msg):
         """ Create ROS message header
 
