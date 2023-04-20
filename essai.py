@@ -29,8 +29,17 @@ observation_space = Dict(
                         'waypnt' : spaces.Box(low=float("-inf"), high=float("inf"), shape=(50, 3), dtype=np.float32),
                         #data du velodymne, a determiner 
                         'data_v' : spaces.Box(low=float("-inf"), high=float("inf"), shape=(50, 3), dtype=np.float32),
+                        # data caméra RGB : il faudra mettre le format de l'image
+                        'data_cam' : spaces.Box(low=0.0, high=255, shape=(10, 5, 3), dtype=np.int16)
                     }
                   )
 
-print(observation_space.sample())
+action_space =  Dict(
+            {
+               'mode_trait' : spaces.Discrete(3),
+               'case_suivante' : spaces.Discrete(len(liste))
+                
+            })
+
+print(action_space.sample())
 
