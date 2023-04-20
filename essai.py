@@ -37,9 +37,5 @@ print(observation_space.sample())
 
 
 
-
-<<<<<<< HEAD
  #commentaire 
-=======
 
->>>>>>> fc9a7b650a8bb121250f61b1b576f181884f8952
