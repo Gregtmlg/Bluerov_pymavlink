@@ -750,25 +750,31 @@ if __name__ == '__main__':
 
     change_mode = 0
 
-    ox = [1.866, 10.44, 1.9, -7.12, 1.866]
-    oy = [-21.355, -26.35, -41.22, -35.59, -21.355]
-    oz = [-7.409]
-    resolution = 1
+    ox = [-30, -30, -10, -10, -30]
+    oy = [-10, 10, 10, -10, -10]
+    oz = [-7]
+    resolution = 3
 
     plannification = Plannification()
-    goal =  np.array([-47.96 , -11.19])
-    evitement = Evitement(goal)
+    goal_evit_1 =  np.array([-19.96 , -10.18])
+    goal_evit_2 = np.array([10.24 , 0.02])
+    # evitement = Evitement(goal_evit_1)
 
-    x_init = [-37.77, -11.42, -7.409]
+    goal_scan =  np.array([-9.77 , 0.02])
+
+    x_init_evit_1 = [-19.96, -29.82, -7]
+    x_init_evit_2 = [-9.77, 0.02, -7]
 
     px, py = plannification.planning(ox, oy, resolution)
+    px.append(goal_scan[0])
+    py.append(goal_scan[1])
     rate = rospy.Rate(50.0)
 
     yaw_path=150
     yaw_send = False
 
     # position_desired = [0, 0, 0, 0.5, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2]
-    counter = 0
+    counter_mission = 1
     position_desired = [-100.0, -100.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
     while not rospy.is_shutdown():
@@ -778,8 +784,8 @@ if __name__ == '__main__':
         # time.sleep(0.05)
         # evitement.goal_reached = True
 
-        if evitement.goal_reached == False:
-            bluerov.do_evit(evitement, x_init, goal)
+        # if evitement.goal_reached == False:
+        #     bluerov.do_evit(x_init, goal)
 
         # if yaw_send == False:
         #     attitude_control.set_target_attitude(bluerov.conn,0, 0, yaw_path)
@@ -788,8 +794,26 @@ if __name__ == '__main__':
         #     if change_mode == 0:
         #         bluerov.mission_sent_point = False
                 # change_mode += 1
-        # bluerov.do_scan(px, py, oz)
 
+        if counter_mission == 2:
+            bluerov.do_evit(x_init_evit_1, goal_evit_1)
+            if bluerov.mission_ongoing == False and bluerov.mission_evit == False:
+                counter_mission +=1
+                print(counter_mission)
+        
+        elif counter_mission == 1:
+            bluerov.do_scan(px, py, oz)
+            if bluerov.mission_ongoing == False and bluerov.mission_scan == False:
+                counter_mission +=1
+                print(counter_mission)
+
+        elif counter_mission == 3:
+            bluerov.do_evit(x_init_evit_2, goal_evit_2)
+            if bluerov.mission_ongoing == False and bluerov.mission_evit == False:
+                counter_mission +=1
+                print(counter_mission)
+
+        print("mission_ongoing ", bluerov.mission_ongoing,"| mission_evit ", bluerov.mission_evit, "| mission_scan ", bluerov.mission_scan, "| counter ", counter_mission)
         # yaw_path = (yaw_path+10)%360 
 
         # bluerov.set_position_target_local_ned(position_desired)

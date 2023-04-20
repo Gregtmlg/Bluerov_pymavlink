@@ -42,16 +42,22 @@ class Bridge(object):
         # [vx, vy, vz] en m/s
         self.current_vel = [0,0,0]
         self.ob = np.array([[]])
-        self.mission_point = 0
-        self.mission_point_sent = False
-        self.init_evit = False
+        self.mission_scan_point = 0
         self.x_evit = np.array([])
         self.scan = LaserScan()
         self.obstacles_colliders = PointCloud()
+
+        self.evitement = None
+        self.mission_point_sent = False
+        self.init_evit = False
+        self.ok_pose = False
+        self.mission_ongoing = False
+        self.mission_evit = False
+        self.mission_scan = False
+
         self.scan_subscriber= rospy.Subscriber("/scan", LaserScan, self.scan_callback, queue_size=1)
         self.velodyne_subscriber= rospy.Subscriber("/velodyne_points", PointCloud2, self.velodyne_callback, queue_size=1)
-        self.scan_subscriber= rospy.Subscriber("/BlueRov2/obstacles", PointCloud, self.collider_callback, queue_size=100)
-        self.ok_pose = False
+        self.collider_subscriber= rospy.Subscriber("/BlueRov2/obstacles", PointCloud, self.collider_callback, queue_size=100)
 
         # Dimension observations velodyne
         self.environment_dim = 20
@@ -434,18 +440,25 @@ class Bridge(object):
     ###################################### Fonctions de missions #######################################################
 
     def do_scan(self, px, py, oz):
-
+        self.mission_ongoing = True
+        self.mission_scan = True
         desired_position = [0.0, 0.0, -oz[0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         current_pose = self.current_pose
-        desired_position[0], desired_position[1] = px[self.mission_point], py[self.mission_point]
+        desired_position[0], desired_position[1] = px[self.mission_scan_point], py[self.mission_scan_point]
 
         if abs(current_pose[0] - desired_position[0]) < 0.2 and abs(current_pose[1] - desired_position[1]) < 0.2:
-            print("Arrivé au point")
-            if self.mission_point == len(px):
+            # print("Arrivé au point")
+            if self.mission_scan_point == len(px) - 1:
                 self.ok_pose = True
-            self.mission_point += 1
-            desired_position[0], desired_position[1] = px[self.mission_point], py[self.mission_point]
+                print('Mission de scan terminée !')
+                self.mission_scan_point = 0
+                self.mission_scan = False
+                self.mission_ongoing = False
+                self.mission_point_sent = False
+            else :
+                self.mission_scan_point += 1
+                desired_position[0], desired_position[1] = px[self.mission_scan_point], py[self.mission_scan_point]
             self.mission_point_sent = False
 
         if self.mission_point_sent == False:
@@ -455,14 +468,11 @@ class Bridge(object):
             time.sleep(0.05)
             self.mission_point_sent = True
 
-        if self.ok_pose == True :
-            print('Mission terminée')
-            self.mission_point = 0
-            self.mission_point_sent = False
 
         
-    def do_evit(self, evitement, x_init, goal):
-
+    def do_evit(self, x_init, goal):
+        self.mission_ongoing = True
+        self.mission_evit = True
         z_mission = x_init[2]
 
         if self.init_evit == False:
@@ -480,6 +490,7 @@ class Bridge(object):
                 print("je suis au point initial")
                 self.x = np.array([x_init[0], x_init[1], self.current_attitude[2], 0.0, 0.0])
                 self.mission_point_sent = False
+                self.evitement = Evitement(goal)
 
 
 
@@ -499,17 +510,17 @@ class Bridge(object):
                     obstacles = self.get_collider_obstacles()
                     compteur+=1
                     if obstacles.size > 0 or compteur > 150000:
-                        self.ob = obstacles
                         break
-                print(compteur)
-                print("Final ", self.ob)
+                self.ob = obstacles
+                # print(compteur)
+                # print("Final ", self.ob)
 
                 current_pose = np.array([self.current_pose[0], self.current_pose[1], self.x[2], self.x[3], self.x[4]])
                 # print("entrée = " + str(self.x))
-                self.x = evitement.planning(self.ob, self.x)
+                self.x = self.evitement.planning(self.ob, self.x)
                 # self.x[2] = -self.x[2]
                 self.mission_point_sent = False
-                print(self.x[0:2])
+                # print(self.x[0:2])
                 # print("self.current_pose = " + str(self.current_pose))
                 # return self.x, u, trajectory
 
@@ -520,6 +531,14 @@ class Bridge(object):
                 self.set_position_target_local_ned(desired_position)
                 time.sleep(0.05)
                 self.mission_point_sent = True
+
+            if self.evitement.goal_reached:
+                self.mission_ongoing = False
+                self.mission_evit = False
+                self.init_evit = False
+                self.mission_point_sent = False
+                print("Mission d'évitement terminée !")
+                self.evitement.goal_reached = False
     ################################## Fin fonction de missions #####################################################
 
     ################################## Fonctions de détection d'obstacles ###########################################

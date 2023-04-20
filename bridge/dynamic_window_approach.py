@@ -197,7 +197,7 @@ def calc_control_and_trajectory(x, dw, config, goal, ob):
                     # best omega=0 rad/s (heading to the goal with
                     # angle difference of 0)
                     best_u[1] = -config.max_delta_yaw_rate
-    print(min_cost)
+    # print(min_cost)
     return best_u, best_trajectory
 
 
@@ -293,7 +293,6 @@ class Evitement():
         # print(x)
         dist_to_goal = math.hypot(x[0] - self.goal[0], x[1] - self.goal[1])
         if dist_to_goal <= config.robot_radius:
-            print("Goal!!")
             self.goal_reached = True
         # print(x)
         return x
