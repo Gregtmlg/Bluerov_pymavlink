@@ -25,7 +25,9 @@ from random import *
 from position_case import type_case
 from Dynamic_Approach.traject3d import evitement
 from Gridy_drone_swipp.Gridy_based import scan
+
 from bridge.bluerov_node import BlueRov
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 COLLISION_DIST = 0.035
@@ -41,6 +43,7 @@ class UnityEnv(gym.Env):
 
         #init des different parametre comme positon
         #goal, batterie ect..
+        self.bluerov = BlueRov(device='udp:localhost:14551')
         self._max_episode_length = max_episode_length
         self.flag_change_goal=False
         self.flag_change_bat=False
@@ -259,12 +262,15 @@ class UnityEnv(gym.Env):
 
         #mise en route du mode de traitement choisi
         if action_trait==1 :
-            evitement(self.pos_pre, action_dep)
+            self.bluerov.do_evit(self.pos_pre, action_dep)
         elif action_trait==2 :
-            scan(self.pos_pre, action_dep)
-        # else :
-        #     #recalibrage()
-        
+            self.bluerov.do_scan(self.pos_pre, action_dep)
+        elif  action_trait==4 :
+            self.bluerov.do_evit(self.pos_pre, self.position_depart)
+        # elif  action_trait==3 :
+        #     self.bluerov.do_recalibrage(self.pos_pre, self.pos_pre)
+
+
         self.cur_pos=self.position_sub
         #tirage de l'aléa de changement du point d'arrivé
         if randint(1,10000)==1 and self.flag_change_goal==False:
