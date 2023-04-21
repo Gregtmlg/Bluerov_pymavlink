@@ -475,7 +475,7 @@ class Bridge(object):
         self.mission_evit = True
         z_mission = x_init[2]
 
-        if self.init_evit == False:
+        while self.init_evit == False:
 
             if self.mission_point_sent == False:
                 time.sleep(0.05)
@@ -498,7 +498,7 @@ class Bridge(object):
         # self.ob = self.get_lidar_obstacle(90)
         # self.ob = self.get_velodyne_obstacle()
 
-        if self.init_evit == True:
+        while self.init_evit == True:
             # si on a commencé la mission d'évitement 
             # print("init_evit " + str(self.init_evit))
             if abs(self.current_pose[0] - self.x[0]) < 0.02 and abs(self.current_pose[1] - self.x[1]) < 0.02:
