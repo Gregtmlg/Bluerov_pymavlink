@@ -25,6 +25,7 @@ from random import *
 from position_case import type_case
 from Dynamic_Approach.traject3d import evitement
 from Gridy_drone_swipp.Gridy_based import scan
+from bridge.bluerov_node import BlueRov
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 COLLISION_DIST = 0.035
