@@ -261,13 +261,16 @@ class UnityEnv(gym.Env):
         
 
         #mise en route du mode de traitement choisi
-        if action_trait==1 :
+        if action_trait == 1 :
             self.bluerov.do_evit(self.pos_pre, action_dep)
-        elif action_trait==2 :
+
+        elif action_trait == 2 :
             self.bluerov.do_scan(self.pos_pre, action_dep)
-        elif  action_trait==4 :
+
+        elif  action_trait == 4 :
             self.bluerov.do_evit(self.pos_pre, self.position_depart)
-        # elif  action_trait==3 :
+            done = True
+        # elif  action_trait == 3 :
         #     self.bluerov.do_recalibrage(self.pos_pre, self.pos_pre)
 
 
@@ -277,9 +280,7 @@ class UnityEnv(gym.Env):
             self.change_goal()
             self.flag_change_goal=True
 
-
-        self.insertitude = self.insertitude +   np.linalg.norm(self.pos_pre - self.cur_pos)*0.1
-                          
+                        
         #actualise les infos
         observations = self.get_observation()
         
@@ -307,9 +308,9 @@ class UnityEnv(gym.Env):
        
 
         #calculer la distance entre le goal et la position actul 
-        if self.current_dist_to_goal < GOAL_REACHED_DIST:
+        if self.current_dist_to_goal < GOAL_REACHED_DIST or self.cur_pos :
             done = True
-
+        
         #imprime le reward dans ros et le nombre de step
         rospy.loginfo(reward)
         rospy.loginfo(self.step_counter)
