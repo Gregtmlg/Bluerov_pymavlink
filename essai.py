@@ -43,3 +43,6 @@ action_space =  Dict(
 
 print(action_space.sample())
 
+
+
+# essaie autofetch
