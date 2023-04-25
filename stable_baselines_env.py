@@ -196,8 +196,7 @@ class UnityEnv(gym.Env):
         score_dep=0
         score_traitement=0
         score_recalibrage=0
-       
-        positon_cur= self.bluerov.current_pose
+        positon_cur= self.bluerov.get_current_pose()
         positon_goal=self.position_goal
 
         pre_dist_to_goal =  self.current_dist_to_goal

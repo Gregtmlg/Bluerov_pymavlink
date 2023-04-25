@@ -667,6 +667,10 @@ class BlueRov(Bridge):
         #récupère simplement le poucentage de la batterie
         bat_percentage = self.get_data()['BATTERY_STATUS']['battery_remaining']/100
         return bat_percentage
+    
+    def get_current_pose(self) : 
+        current_pose = np.array(self.current_pose)
+        return current_pose
 
     # def _create_camera_msg(self):
     #     if not self.video.frame_available():
