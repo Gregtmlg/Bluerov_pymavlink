@@ -139,13 +139,13 @@ class UnityEnv(gym.Env):
         subprocess.Popen(["roslaunch", "-p", port, fullpath])
         print("Gazebo launched!")
 
-        self.gzclient_pid = 0      
+        self.gzclient_pid = 0
          
         #inscrition en tant que pub et sub au topic qui va permettre la position a la fin 
         #d'un mode de traiter (sortie de scan ou évitement)
         self.position_sub = rospy.Subscriber("position", Float64, queue_size=1)
         self.position_pub = rospy.Pubscriber("position", Float64, queue_size=1)
-
+        
 
     #Actualisaiton de l'observation 
     def get_observation(self):
@@ -159,19 +159,20 @@ class UnityEnv(gym.Env):
             self.flag_change_bat=True
         else : 
             #baisse de la batterie simple
-            self.batterie = self.batterie-6
+            self.batterie = self.bluerov.get_battery_percentage()
         
         #actualisation des position 
-        dict_obs['pos_départ'] = np.array([self.position_depart], dtype=int)
-        dict_obs['intervention'] = np.array([self.position_goal], dtype=int)
-        dict_obs['pos_cur'] = np.array([self.position_sub], dtype=int)
+        dict_obs['pos_départ'] = np.array([self.position_depart], dtype=np.float32)
+        dict_obs['intervention'] = np.array([self.position_goal], dtype=np.float32)
+        dict_obs['pos_cur'] = np.array([self.bluerov.current_pose], dtype=np.float32)
 
         #baisse de la batterie simple
-        dict_obs['nivbat'] = np.array([self.batterie], dtype=int)
-        dict_obs['waypnt'] = np.array([self.grid], dtype=int)
-        dict_obs['data_v'] = np.array([self.data.v], dtype=int)
+        dict_obs['nivbat'] = np.array([self.batterie], dtype=np.float32)
+        dict_obs['waypnt'] = np.array([self.grid], dtype=np.float32)
+        dict_obs['data_v'] = np.array([self.bluerov.get_collider_obstacles()], dtype=np.float32)
 
         return Dict(dict_obs)
+    
     def reward(self) : 
         
           
