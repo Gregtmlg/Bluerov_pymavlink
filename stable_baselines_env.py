@@ -263,8 +263,14 @@ class UnityEnv(gym.Env):
         #actualisation des variables 
         action_tr= self.cur_action_tr
         action_dep= self.cur_action_dep  
-        if  self.pos_error > 3 :
-            score_recalibrage=-100
+
+        if  self.pos_error > 1.5 :
+            score_recalibrage = -100
+
+        elif self.pos_error > 1 : 
+           score_recalibrage=(self.pos_error-1) * -100
+
+
         # calcule du score 
         self.score = score_distance+score_goal+score_traitement+score_dep+score_batterie+score_recalibrage
         return self.score
