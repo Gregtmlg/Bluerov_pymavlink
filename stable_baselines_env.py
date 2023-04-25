@@ -23,8 +23,8 @@ import os
 import time
 from random import *
 from position_case import type_case
-from Dynamic_Approach.traject3d import evitement
-from Gridy_drone_swipp.Gridy_based import scan
+# from Dynamic_Approach.traject3d import evitement
+# from Gridy_drone_swipp.Gridy_based import scan
 
 from bridge.bluerov_node import BlueRov
 
@@ -173,47 +173,46 @@ class UnityEnv(gym.Env):
 
         return Dict(dict_obs)
     def reward(self) : 
-        
-          
+        score_goal=0
+        score_distance=0
+        score_batterie=0
+        reward_dep=0
+        score_traitement=0
+
+       
         positon_cur= self.position_sub
         positon_goal=self.position_goal
 
-        pre_dist_to_goal =  current_dist_to_goal
+        pre_dist_to_goal =  self.current_dist_to_goal
         current_dist_to_goal=[[],[],[],[],[],[],[]]
+
         for i in range(0,7) :
-            current_dist_to_goal[i] = np.linalg.norm(positon_goal[i]- positon_cur)
+             current_dist_to_goal[i] = np.linalg.norm(positon_goal[i]- positon_cur)
+
+
+
+        for i in range(0,7) :
+            if current_dist_to_goal[i]< GOAL_REACHED_DIST : 
+                score_goal=100
+
+            if abs(current_dist_to_start[i] - pre_dist_to_goal[i])>0 :
+                score_distance=score_distance+abs(current_dist_to_start[i] - pre_dist_to_goal[i])*10
 
         current_dist_to_start = np.linalg.norm(self.position_depart- positon_cur)
-        self.current_dist_to_goal=current_dist_to_goal
-
+       
+ 
 
         #systeme de recompense doit changer pour la distance avec le goal car plusieur goal maintenant 
-
-        if self.batterie > 50 : 
-            #score simple pour la distance du goal
-            score_distance = pre_dist_to_goal-current_dist_to_goal*10
-        #si batterie infieure a 50 plus de recompense pour aller au goal car doit retourner au depart
-
-        #si goal atteint et bat 50 goal parfait, en dessous de 60 bien mais pas top
-        if current_dist_to_goal < GOAL_REACHED_DIST:
-            if self.batterie==50 :
-                score_goal=1000
-            elif self.batterie>50 :
-                score_goal=800 
-            elif self.batterie<50 :
-                score_goal=-1000
-                                
-        #si batterie 0 alors on check la distance avec le depart 
+        #si batterie  a 0 et le robot n'est pas a la zone de départ alors note de batterie tres mauvaise                
+        
         if self.batterie==0 :
 
-            if current_dist_to_start < GOAL_REACHED_DIST  :
-                score_goal=1000 
-            else :
-                #malusse si distance trop loin du départ avec bat 0 
-                current_distance_to_depart = np.linalg.norm(self.position_depart- positon_cur)
-                score_base = current_distance_to_depart*(-10)
+            if current_dist_to_start < 25 :
+                score_batterie=1000 
+            else :        
+                score_batterie = current_dist_to_start*(-100)
 
-        #verif de la case precendante et de laction précédente 
+        # #verif de la case precendante et de laction précédente 
         pso_robot=[self.pos_pre[0],self.pos_pre[1]]
         nbr_case=5
 
@@ -222,23 +221,23 @@ class UnityEnv(gym.Env):
 
         self.pre_action_tr = action_tr 
         self.pre_action_dep = action_dep
-
+        reward_dep = 0
         for i in range(0,4) : 
-            if self.pre_action_dep==sortie_disp[i] :
-                reward_dep=20
-            else :
-                reward_dep=-100
+            if self.pre_action_dep == sortie_disp[i] :
+                reward_dep = 100
+        if reward_dep == 0 : 
+            reward_dep = -100
 
+
+        if type==self.pre_action_tr :
+            score_traitement=100
+        else :
+            score_traitement=-100
 
         action_tr= self.cur_action_tr
         action_dep= self.cur_action_dep  
-        if type==self.pre_action :
-            score_traitement=10
-        else :
-            score_traitement=-10
 
-
-        self.score = score_distance+score_goal+score_traitement+score_base+reward_dep
+        self.score = score_distance+score_goal+score_traitement+reward_dep+score_batterie
         return self.score
 
 
@@ -249,12 +248,13 @@ class UnityEnv(gym.Env):
         #nombre de step+1
         self.step_counter += 1
         #on recupère les infos contenue dans le dic "action", deux données, mode de traitement et coordonées voulu apres avoir fini le mode de traitement 
-        sample_acttion=action
-        action_trait=sample_acttion['mode_trait']
-        action_dep=sample_acttion['case_suivante']
+        sample_action=action
+        action_trait=sample_action['mode_trait']
+        action_dep=sample_action['case_suivante']
 
         self.cur_action_tr = action_trait
         self.cur_action_dep = self.grid[action_dep-1]
+
         #position avant de bouger 
         self.pos_pre=self.position_sub
 
