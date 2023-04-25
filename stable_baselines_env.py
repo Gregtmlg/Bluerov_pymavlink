@@ -86,8 +86,7 @@ class UnityEnv(gym.Env):
 
         #fonction qui place le goal au hasard parmis les waypoints de la grille
         self.change_goal()
-        self.batterie_start=100
-        self.batterie=self.batterie_start
+        self.batterie=self.bluerov.get_battery_percentage()
         # definition de l'espace d'action et d'observation
         gym.Env.__init__(self)
 
@@ -138,13 +137,6 @@ class UnityEnv(gym.Env):
 
         subprocess.Popen(["roslaunch", "-p", port, fullpath])
         print("Gazebo launched!")
-
-        self.gzclient_pid = 0
-         
-        #inscrition en tant que pub et sub au topic qui va permettre la position a la fin 
-        #d'un mode de traiter (sortie de scan ou évitement)
-        self.position_sub = rospy.Subscriber("position", Float64, queue_size=1)
-        self.position_pub = rospy.Pubscriber("position", Float64, queue_size=1)
         
 
     #Actualisaiton de l'observation 
@@ -354,41 +346,7 @@ class UnityEnv(gym.Env):
         #self.position_goal=waypoint_case(n)
 
     
-    @staticmethod
-    def observe_collision(laser_data):
-        # Detect a collision from laser data
-        min_laser = min(laser_data)
-        if min_laser < COLLISION_DIST:
-            return True, min_laser
-        return False, min_laser
+    #@staticmethod
 
-
-
-# Function to put the laser data in bins
-def binning(lower_bound, data, quantity):
-    width = round(len(data) / quantity)
-    quantity -= 1
-    bins = []
-    for low in range(lower_bound, lower_bound + quantity * width + 1, width):
-        bins.append(min(data[low:low + width]))
-    return np.array([bins])
-
-
-
-def velodyne_callback(self, v):
-    data = list(pc2.read_points(v, skip_nans=False, field_names=("x", "y", "z")))
-    self.velodyne_data = np.ones(self.environment_dim) * 10
-    for i in range(len(data)):
-        if data[i][2] > -0.2:
-            dot = data[i][0] * 1 + data[i][1] * 0
-            mag1 = math.sqrt(math.pow(data[i][0], 2) + math.pow(data[i][1], 2))
-            mag2 = math.sqrt(math.pow(1, 2) + math.pow(0, 2))
-            beta = math.acos(dot / (mag1 * mag2)) * np.sign(data[i][1])
-            dist = math.sqrt(data[i][0] ** 2 + data[i][1] ** 2 + data[i][2] ** 2)
-
-            for j in range(len(self.gaps)):
-                if self.gaps[j][0] <= beta < self.gaps[j][1]:
-                    self.velodyne_data[j] = min(self.velodyne_data[j], dist)
-                    break
 
 
