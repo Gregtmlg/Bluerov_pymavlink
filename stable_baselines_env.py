@@ -45,10 +45,13 @@ class UnityEnv(gym.Env):
         #goal, batterie ect..
         self.bluerov = BlueRov(device='udp:localhost:14551')
         self._max_episode_length = max_episode_length
+
         self.flag_change_goal=False
+
         self.flag_change_bat=False
         self.flag_courant=False
         self.flag_change_bat_init=False
+
         self.step_counter = 0
         self.goal_atteint= [[0],[0],[0],[0],[0],[0],[0]]
         self.position=[0,0,20]
@@ -151,7 +154,8 @@ class UnityEnv(gym.Env):
         #tirage de l'aléa de baisse subite de la batterie 
 
 
-
+        self.batterie=self.bluerov.get_battery_percentage()
+        
         #tirage de l'aléa de courant
         if self.flag_courant==True:
             self.pos_error=self.pos_error+0.2
