@@ -51,7 +51,7 @@ class UnityEnv(gym.Env):
         self.flag_change_bat=False
         self.flag_courant=False
         self.flag_change_bat_init=False
-
+        
         self.step_counter = 0
         self.goal_atteint= [[0],[0],[0],[0],[0],[0],[0]]
         self.position=[0,0,20]
@@ -93,6 +93,7 @@ class UnityEnv(gym.Env):
         #fonction qui place le goal au hasard parmis les waypoints de la grille
         self.change_goal()
         self.batterie=self.bluerov.get_battery_percentage()
+        self.batterie_pre=self.batterie
         # definition de l'espace d'action et d'observation
         gym.Env.__init__(self)
 
@@ -152,10 +153,8 @@ class UnityEnv(gym.Env):
         
         
         #tirage de l'aléa de baisse subite de la batterie 
-
-
         self.batterie=self.bluerov.get_battery_percentage()
-        
+
         #tirage de l'aléa de courant
         if self.flag_courant==True:
             self.pos_error=self.pos_error+0.2
@@ -169,9 +168,9 @@ class UnityEnv(gym.Env):
         if self.flag_change_bat==True and self.flag_change_bat_init==False  : 
             self.batterie_modif=self.batterie/2
             self.flag_change_bat_init==True 
+        if self.flag_change_bat==True and  self.flag_change_bat_init==True : 
 
-
-        self.batterie_modif =  self.batterie_modif - (self.batterie-self.batterie_pre)* facteur_courant
+            self.batterie_modif =  self.batterie_modif - (self.batterie_pre- self.batterie )* facteur_courant
         
         
 
@@ -387,16 +386,17 @@ class UnityEnv(gym.Env):
         n = randint(1,10)
         #self.position_goal=waypoint_case(n)
 
-    
-    @staticmethod
+    def imponderables(self): 
 
-    def impoderables(self): 
+        self.batterie=self.bluerov.get_battery_percentage()
 
         #tirage de l'aléa de baisse subite de la batterie 
         if randint(1,1000)==1 and self.flag_change_bat==False:
             self.flag_change_bat=True
+
         else :
             self.batterie_modif=self.batterie
+
         #tirage de l'aléa de courant
         if randint(1,500)==1 and self.flag_courant==False:
             self.flag_courant=True   
