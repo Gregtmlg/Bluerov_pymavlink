@@ -48,6 +48,7 @@ class UnityEnv(gym.Env):
         self.flag_change_goal=False
         self.flag_change_bat=False
         self.step_counter = 0
+        self.goal_atteint= [[0],[0],[0],[0],[0],[0],[0]]
         self.position=[0,0,20]
         self.position_depart=[0,0,20]
         self.position_goal=[
@@ -166,6 +167,7 @@ class UnityEnv(gym.Env):
         return Dict(dict_obs)
     
     def reward(self) : 
+
         score_goal=0
         score_distance=0
         score_batterie=0
@@ -177,59 +179,73 @@ class UnityEnv(gym.Env):
         positon_goal=self.position_goal
 
         pre_dist_to_goal =  self.current_dist_to_goal
-        current_dist_to_goal=[[],[],[],[],[],[],[]]
 
+        #Calcule de la distance du robot par rapport a chaqun des goals 
+        current_dist_to_goal=[[],[],[],[],[],[],[]]
         for i in range(0,7) :
              current_dist_to_goal[i] = np.linalg.norm(positon_goal[i]- positon_cur)
 
 
-
+        
         for i in range(0,7) :
+            #On regade si le robot a atteint un goal si oui +100pts et on pase la variable de goal atteint a 1 pour ce goal 
             if current_dist_to_goal[i]< GOAL_REACHED_DIST : 
                 score_goal=100
+                self.goal_atteint[i]=1
 
-            if abs(current_dist_to_start[i] - pre_dist_to_goal[i])>0 :
-                score_distance=score_distance+abs(current_dist_to_start[i] - pre_dist_to_goal[i])*10
+            #SI le robot a déja atteint les coordonée de ce goal si alors on calcule rien dautre sinon : 
+            if self.goal_atteint[i]==0 :
+                #on calcule du rapprochement/eloignement effectuer par le robot entre le step n et n+1 : 
+                if abs(current_dist_to_start[i] - pre_dist_to_goal[i])>0 :
 
+                    score_distance=score_distance+abs(current_dist_to_start[i] - pre_dist_to_goal[i])*10
+                #de cette maniere on a pas de maluse quand on s'eloigne d'un goal qu'on vient de traiter.
+
+        #calcule de la ditance de par rapport au départ 
         current_dist_to_start = np.linalg.norm(self.position_depart- positon_cur)
-       
- 
 
-        #systeme de recompense doit changer pour la distance avec le goal car plusieur goal maintenant 
-        #si batterie  a 0 et le robot n'est pas a la zone de départ alors note de batterie tres mauvaise                
+        #actualisation de la variable pour le prochain tour de boucle.
+        self.current_dist_to_goal=current_dist_to_goal
+
         
+        #si batterie  a 0 et le robot pas a la zone de départ alors note de batterie tres mauvaise                
         if self.batterie==0 :
-
+            #si le robot et a moins de 25 mettre de son départ quand 0 alors bien : 
             if current_dist_to_start < 25 :
                 score_batterie=1000 
+            #sinon mauvais :
             else :        
                 score_batterie = current_dist_to_start*(-100)
 
-        # #verif de la case precendante et de laction précédente 
+        #verif de la case precendante et de laction précédente 
         pso_robot=[self.pos_pre[0],self.pos_pre[1]]
         nbr_case=5
 
+        #Récupere les données lier a la case dans laquel le robot ce trouve, les diffrentes portes possible et laction a effectuer dans le casse
         type, sortie_disp=type_case(nbr_case,pso_robot)
-
 
         self.pre_action_tr = action_tr 
         self.pre_action_dep = action_dep
-        reward_dep = 0
+        #verification pour voir si la porte choisi par le robot corrrespond a une des portes disponible dans la casse ou il ce trouvait. 
         for i in range(0,4) : 
+            #si oui, bon pts 
             if self.pre_action_dep == sortie_disp[i] :
                 reward_dep = 100
+        #sinon malusse
         if reward_dep == 0 : 
             reward_dep = -100
 
-
+        #Verification du mode de traitement choisi par rapport a la casse ou il etait 
         if type==self.pre_action_tr :
             score_traitement=100
         else :
             score_traitement=-100
 
+        #actualisation des variables 
         action_tr= self.cur_action_tr
         action_dep= self.cur_action_dep  
 
+        # calcule du score 
         self.score = score_distance+score_goal+score_traitement+reward_dep+score_batterie
         return self.score
 
