@@ -47,6 +47,8 @@ class UnityEnv(gym.Env):
         self._max_episode_length = max_episode_length
         self.flag_change_goal=False
         self.flag_change_bat=False
+        self.flag_courant=False
+        self.flag_change_bat_init=False
         self.step_counter = 0
         self.goal_atteint= [[0],[0],[0],[0],[0],[0],[0]]
         self.position=[0,0,20]
@@ -153,25 +155,42 @@ class UnityEnv(gym.Env):
         
         dict_obs = self.observation_space.sample()
         
-        #tirage de l'aléa de baisse subite de la batterie 
-        if randint(1,10000)==1 and self.flag_change_bat==False:
-            #capacité/2
-            self.batterie = self.batterie/2
-            self.flag_change_bat=True
-        else : 
-            #baisse de la batterie simple
-            self.batterie = self.bluerov.get_battery_percentage()
         
+        #tirage de l'aléa de baisse subite de la batterie 
+
+
+
+        #tirage de l'aléa de courant
+        if self.flag_courant==True:
+            self.pos_error=self.pos_error+0.2
+            facteur_courant=2
+        else  :
+            self.pos_error=self.pos_error+0.1
+            facteur_courant=1
+        
+
+        #tirage de l'aléa batterie
+        if self.flag_change_bat==True and self.flag_change_bat_init==False  : 
+            self.batterie_modif=self.batterie/2
+            self.flag_change_bat_init==True 
+
+
+        self.batterie_modif =  self.batterie_modif - (self.batterie-self.batterie_pre)* facteur_courant
+        
+        
+
         #actualisation des position 
         dict_obs['pos_départ'] = np.array([self.position_depart], dtype=np.float32)
         dict_obs['intervention'] = np.array([self.position_goal], dtype=np.float32)
         dict_obs['pos_cur'] = np.array([self.bluerov.current_pose], dtype=np.float32)
-
+        
         #baisse de la batterie simple
-        dict_obs['nivbat'] = np.array([self.batterie], dtype=np.float32)
+        dict_obs['nivbat'] = np.array([self.batterie_modif], dtype=np.float32) 
+        dict_obs['pos_error'] = np.array([self.pos_error], dtype=np.float32)
         dict_obs['waypnt'] = np.array([self.grid], dtype=np.float32)
         dict_obs['data_v'] = np.array([self.bluerov.get_collider_obstacles()], dtype=np.float32)
-
+        
+        self.batterie_pre=self.batterie
         return Dict(dict_obs)
     
     def reward(self) : 
@@ -292,12 +311,8 @@ class UnityEnv(gym.Env):
 
 
         self.cur_pos=self.position_sub
-        #tirage de l'aléa de changement du point d'arrivé
-        if randint(1,10000)==1 and self.flag_change_goal==False:
-            self.change_goal()
-            self.flag_change_goal=True
 
-                        
+        self.imponderables()               
         #actualise les infos
         observations = self.get_observation()
         
@@ -378,6 +393,21 @@ class UnityEnv(gym.Env):
             return True, min_laser
         return False, min_laser
 
+    def impoderables(self): 
+
+
+
+
+        #tirage de l'aléa de baisse subite de la batterie 
+        if randint(1,1000)==1 and self.flag_change_bat==False:
+            self.flag_change_bat=True
+        else :
+            self.batterie_modif=self.batterie
+        #tirage de l'aléa de courant
+        if randint(1,500)==1 and self.flag_courant==False:
+            self.flag_courant=True   
+
+        return 
 
 
 # Function to put the laser data in bins
@@ -388,7 +418,6 @@ def binning(lower_bound, data, quantity):
     for low in range(lower_bound, lower_bound + quantity * width + 1, width):
         bins.append(min(data[low:low + width]))
     return np.array([bins])
-
 
 
 def velodyne_callback(self, v):
