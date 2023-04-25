@@ -197,7 +197,7 @@ class UnityEnv(gym.Env):
         score_traitement=0
         score_recalibrage=0
        
-        positon_cur= self.position_sub
+        positon_cur= self.bluerov.current_pos
         positon_goal=self.position_goal
 
         pre_dist_to_goal =  self.current_dist_to_goal
@@ -294,7 +294,7 @@ class UnityEnv(gym.Env):
         self.cur_action_dep = self.grid[action_dep-1]
 
         #position avant de bouger 
-        self.pos_pre=self.position_sub
+        self.pos_pre=self.bluerov.current_pos
 
         
 
@@ -312,7 +312,7 @@ class UnityEnv(gym.Env):
         #     self.bluerov.do_recalibrage(self.pos_pre, self.pos_pre)
         #     self.pos_error = 0
 
-        self.cur_pos=self.position_sub
+        self.cur_pos=self.bluerov.current_pos
 
         self.imponderables()               
         #actualise les infos
