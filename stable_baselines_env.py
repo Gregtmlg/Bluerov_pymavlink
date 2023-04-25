@@ -190,9 +190,9 @@ class UnityEnv(gym.Env):
         score_goal=0
         score_distance=0
         score_batterie=0
-        reward_dep=0
+        score_dep=0
         score_traitement=0
-
+        score_recalibrage=0
        
         positon_cur= self.position_sub
         positon_goal=self.position_goal
@@ -249,10 +249,10 @@ class UnityEnv(gym.Env):
         for i in range(0,4) : 
             #si oui, bon pts 
             if self.pre_action_dep == sortie_disp[i] :
-                reward_dep = 100
+                score_dep = 100
         #sinon malusse
-        if reward_dep == 0 : 
-            reward_dep = -100
+        if score_dep == 0 : 
+            score_dep = -100
 
         #Verification du mode de traitement choisi par rapport a la casse ou il etait 
         if type==self.pre_action_tr :
@@ -263,9 +263,10 @@ class UnityEnv(gym.Env):
         #actualisation des variables 
         action_tr= self.cur_action_tr
         action_dep= self.cur_action_dep  
-
+        if  self.pos_error > 3 :
+            score_recalibrage=-100
         # calcule du score 
-        self.score = score_distance+score_goal+score_traitement+reward_dep+score_batterie
+        self.score = score_distance+score_goal+score_traitement+score_dep+score_batterie+score_recalibrage
         return self.score
 
 
@@ -300,7 +301,7 @@ class UnityEnv(gym.Env):
             done = True
         # elif  action_trait == 3 :
         #     self.bluerov.do_recalibrage(self.pos_pre, self.pos_pre)
-
+        #     self.pos_error = 0
 
         self.cur_pos=self.position_sub
 
@@ -381,9 +382,6 @@ class UnityEnv(gym.Env):
 
     def impoderables(self): 
 
-
-
-
         #tirage de l'aléa de baisse subite de la batterie 
         if randint(1,1000)==1 and self.flag_change_bat==False:
             self.flag_change_bat=True
@@ -393,7 +391,7 @@ class UnityEnv(gym.Env):
         if randint(1,500)==1 and self.flag_courant==False:
             self.flag_courant=True   
 
-        return 
+        
 
 
 
