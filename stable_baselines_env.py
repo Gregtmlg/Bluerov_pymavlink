@@ -51,11 +51,12 @@ class UnityEnv(gym.Env):
         self.flag_change_bat=False
         self.flag_courant=False
         self.flag_change_bat_init=False
-        
+
         self.step_counter = 0
-        self.goal_atteint= [[0],[0],[0],[0],[0],[0],[0]]
+        self.goal_atteint= np.array([[0],[0],[0],[0],[0],[0],[0]])
         self.position=[0,0,20]
-        self.position_depart=[0,0,20]
+        self.position_depart=np.array([0,0,20])
+
         self.position_goal=[
                             [0,0,20],
                             [0,0,20],
@@ -65,7 +66,7 @@ class UnityEnv(gym.Env):
                             [0,0,20],
                             [0,0,20]
                            ]
-        self.current_dist_to_goal=[
+        self.current_dist_to_goal=np.array([
                                     [0],
                                     [0],
                                     [0],
@@ -73,8 +74,16 @@ class UnityEnv(gym.Env):
                                     [0],
                                     [0],
                                     [0]
-                                  ]
-
+                                  ])
+        self.pre_dist_to_goal=np.array([
+                                    [0],
+                                    [0],
+                                    [0],
+                                    [0],
+                                    [0],
+                                    [0],
+                                    [0]
+                                  ])
         self.insertitude=0.20
         self.grid =[
         [0.0, 0], [0.0, 1], [0.0, 2], [0.0, 3], [0.0, 4], 
@@ -196,10 +205,11 @@ class UnityEnv(gym.Env):
         score_dep=0
         score_traitement=0
         score_recalibrage=0
+       
         positon_cur= self.bluerov.get_current_pose()
-        positon_goal=self.position_goal
+        positon_goal=np.array(self.position_goal)
 
-        pre_dist_to_goal =  self.current_dist_to_goal
+        self.pre_dist_to_goal =  self.current_dist_to_goal
 
         #Calcule de la distance du robot par rapport a chaqun des goals 
         current_dist_to_goal=[[],[],[],[],[],[],[]]
@@ -217,13 +227,13 @@ class UnityEnv(gym.Env):
             #SI le robot a déja atteint les coordonée de ce goal si alors on calcule rien dautre sinon : 
             if self.goal_atteint[i]==0 :
                 #on calcule du rapprochement/eloignement effectuer par le robot entre le step n et n+1 : 
-                if abs(current_dist_to_start[i] - pre_dist_to_goal[i])>0 :
+                if abs(current_dist_to_start[i] - self.pre_dist_to_goal[i])>0 :
 
-                    score_distance=score_distance+abs(current_dist_to_start[i] - pre_dist_to_goal[i])*10
+                    score_distance=score_distance+abs(current_dist_to_start[i] - self.pre_dist_to_goal[i])*10
                 #de cette maniere on a pas de maluse quand on s'eloigne d'un goal qu'on vient de traiter.
 
         #calcule de la ditance de par rapport au départ 
-        current_dist_to_start = np.linalg.norm(self.position_depart- positon_cur)
+        current_dist_to_start = np.linalg.norm(self.position_depart - positon_cur)
 
         #actualisation de la variable pour le prochain tour de boucle.
         self.current_dist_to_goal=current_dist_to_goal
