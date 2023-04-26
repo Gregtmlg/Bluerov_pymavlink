@@ -40,9 +40,20 @@ action_space =  Dict(
                'case_suivante' : spaces.Discrete(len(liste))
                 
             })
+limite=True
+portes=[]
+for z in range(17):
+    for x in range(17):
+        if limite:
+            if x % 2 == 1:
+                portes.append([-70 + x * 10, -70 + z * 10, 6])
+        else:
+            if x % 2 == 0:
+                portes.append([-70 + x * 10, -70 + z * 10, 6])
+    limite = not limite
 
-print(action_space.sample())
-
+print(portes)
+    
 
 
 # essaie autofetch
