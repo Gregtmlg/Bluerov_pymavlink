@@ -438,6 +438,18 @@ class Bridge(object):
     ###################################### Fin fonctions commandes MAVLINK #############################################
 
     ###################################### Fonctions de missions #######################################################
+    
+    def do_recalibrage(self, position):
+        self.mission_ongoing = True
+        self.set_target_depth(0)
+        while self.current_pose[2] < -0.1:
+            self.get_bluerov_data()
+        time.sleep(2)
+        self.set_target_depth(-position[2])
+        while self.current_pose[2] > position[2]:
+            self.get_bluerov_data()
+        self.mission_ongoing = False
+
 
     def do_scan(self, px, py, oz):
         self.mission_ongoing = True
