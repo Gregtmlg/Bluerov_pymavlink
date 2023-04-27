@@ -111,11 +111,11 @@ class UnityEnv(gym.Env):
         gym.Env.__init__(self)
 
 
-        # On a déterminé 4 actions possibles pour le robot : 3 qui gèrent le mode de déplacement (scan, evit, recalibrage),
+        # On a déterminé 5 actions possibles pour le robot : 4 qui gèrent le mode de déplacement (scan, evit, recalibrage et retour base),
         # 1 qui gère la zone à rejoindre avec le mode de déplacement choisis.
         self.action_space =  Dict(
             {
-               'mode_trait' : spaces.Discrete(3),
+               'mode_trait' : spaces.Discrete(4),
                'case_suivante' : spaces.Discrete(len(self.grid))
                 
             })
@@ -317,9 +317,10 @@ class UnityEnv(gym.Env):
         elif  action_trait == 4 :
             self.bluerov.do_evit(self.pos_pre, self.position_depart)
             done = True
-        # elif  action_trait == 3 :
-        #     self.bluerov.do_recalibrage(self.pos_pre, self.pos_pre)
-        #     self.pos_error = 0
+            
+        elif  action_trait == 3 :
+            self.bluerov.do_recalibrage(self.pos_pre, self.pos_pre)
+            self.pos_error = 0
 
         self.cur_pos=self.bluerov.current_pos
 
