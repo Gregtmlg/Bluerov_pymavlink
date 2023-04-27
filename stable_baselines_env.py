@@ -84,7 +84,7 @@ class UnityEnv(gym.Env):
                                     [0],
                                     [0]
                                   ])
-        self.insertitude=0.20
+    
         self.grid =[
         [0.0, 0], [0.0, 1], [0.0, 2], [0.0, 3], [0.0, 4], 
         [0.5, -0.5], [0.5, 0.5], [0.5, 1.5], [0.5, 2.5], [0.5, 3.5], 
@@ -180,9 +180,8 @@ class UnityEnv(gym.Env):
         if self.flag_change_bat==True and  self.flag_change_bat_init==True : 
 
             self.batterie_modif =  self.batterie_modif - (self.batterie_pre- self.batterie )* facteur_courant
-        
-        
-
+       
+       
         #actualisation des position 
         dict_obs['pos_départ'] = np.array([self.position_depart], dtype=np.float32)
         dict_obs['intervention'] = np.array([self.position_goal], dtype=np.float32)
@@ -276,15 +275,12 @@ class UnityEnv(gym.Env):
         action_tr= self.cur_action_tr
         action_dep= self.cur_action_dep  
 
-        if  self.pos_error > 1.5 :
-            score_recalibrage = -100
+        
 
-        elif self.pos_error > 1 : 
-           score_recalibrage=(self.pos_error-1) * -100
 
 
         # calcule du score 
-        self.score = score_distance+score_goal+score_traitement+score_dep+score_batterie+score_recalibrage
+        self.score = score_distance+score_goal+score_traitement+score_dep+score_batterie
         return self.score
 
 
