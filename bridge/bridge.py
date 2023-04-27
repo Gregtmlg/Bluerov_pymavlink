@@ -456,29 +456,32 @@ class Bridge(object):
         self.mission_scan = True
         desired_position = [0.0, 0.0, -oz[0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-        current_pose = self.current_pose
-        desired_position[0], desired_position[1] = px[self.mission_scan_point], py[self.mission_scan_point]
+        while self.mission_ongoing and self.mission_scan:
+            self.get_bluerov_data()
 
-        if abs(current_pose[0] - desired_position[0]) < 0.2 and abs(current_pose[1] - desired_position[1]) < 0.2:
-            # print("Arrivé au point")
-            if self.mission_scan_point == len(px) - 1:
-                self.ok_pose = True
-                print('Mission de scan terminée !')
-                self.mission_scan_point = 0
-                self.mission_scan = False
-                self.mission_ongoing = False
+            current_pose = self.current_pose
+            desired_position[0], desired_position[1] = px[self.mission_scan_point], py[self.mission_scan_point]
+
+            if abs(current_pose[0] - desired_position[0]) < 0.2 and abs(current_pose[1] - desired_position[1]) < 0.2:
+                # print("Arrivé au point")
+                if self.mission_scan_point == len(px) - 1:
+                    self.ok_pose = True
+                    print('Mission de scan terminée !')
+                    self.mission_scan_point = 0
+                    self.mission_scan = False
+                    self.mission_ongoing = False
+                    self.mission_point_sent = False
+                else :
+                    self.mission_scan_point += 1
+                    desired_position[0], desired_position[1] = px[self.mission_scan_point], py[self.mission_scan_point]
                 self.mission_point_sent = False
-            else :
-                self.mission_scan_point += 1
-                desired_position[0], desired_position[1] = px[self.mission_scan_point], py[self.mission_scan_point]
-            self.mission_point_sent = False
 
-        if self.mission_point_sent == False:
-            time.sleep(0.05)
-            # self.ok_pose = False
-            self.set_position_target_local_ned(desired_position)
-            time.sleep(0.05)
-            self.mission_point_sent = True
+            if self.mission_point_sent == False:
+                time.sleep(0.05)
+                # self.ok_pose = False
+                self.set_position_target_local_ned(desired_position)
+                time.sleep(0.05)
+                self.mission_point_sent = True
 
 
         
@@ -488,6 +491,7 @@ class Bridge(object):
         z_mission = x_init[2]
 
         while self.init_evit == False:
+            self.get_bluerov_data()
 
             if self.mission_point_sent == False:
                 time.sleep(0.05)
@@ -511,6 +515,7 @@ class Bridge(object):
         # self.ob = self.get_velodyne_obstacle()
 
         while self.init_evit == True:
+            self.get_bluerov_data()
             # si on a commencé la mission d'évitement 
             # print("init_evit " + str(self.init_evit))
             if abs(self.current_pose[0] - self.x[0]) < 0.02 and abs(self.current_pose[1] - self.x[1]) < 0.02:
