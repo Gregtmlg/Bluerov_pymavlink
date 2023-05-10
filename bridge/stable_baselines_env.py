@@ -116,7 +116,7 @@ class UnityEnv(gym.Env):
 
         # On a déterminé 5 actions possibles pour le robot : 4 qui gèrent le mode de déplacement (scan, evit, recalibrage et retour base),
         # 1 qui gère la zone à rejoindre avec le mode de déplacement choisis.
-        self.action_space =  Box(low=np.array([0,0]), high=np.array([4,144]), dtype=np.int32)
+        self.action_space =  Box(low=np.array([0,0]), high=np.array([4,144]), dtype=np.uint32)
 
         self.observation_space = Dict(
                     {
@@ -135,7 +135,7 @@ class UnityEnv(gym.Env):
                         #data du velodymne, a determiner 
                         'data_v' : spaces.Box(low=float("-inf"), high=float("inf"), shape=(50, 3), dtype=np.float32),
                         # data caméra RGB : il faudra mettre le format de l'image
-                        'data_cam' : spaces.Box(low=0.0, high=255, shape=(10, 5, 3), dtype=np.int16)
+                        'data_cam' : spaces.Box(low=0.0, high=255, shape=(10, 5, 3), dtype=np.uint16)
                     }
                   )
 
@@ -161,6 +161,10 @@ class UnityEnv(gym.Env):
         #tirage de l'aléa de baisse subite de la batterie 
         self.batterie=self.bluerov.get_battery_percentage()
 
+        #acquire all obstacles around
+        # obstacles = self.bluerov.get_collider_obstacles()
+        obstacles = np.zeros([50,3])
+
         #tirage de l'aléa de courant
         if self.flag_courant==True:
             self.pos_error=self.pos_error+0.2
@@ -180,18 +184,21 @@ class UnityEnv(gym.Env):
        
        
         #actualisation des position 
-        dict_obs['pos_départ'] = self.position_depart
-        dict_obs['intervention'] = np.array(self.position_goal)
-        dict_obs['pos_cur'] = np.array(self.bluerov.current_pose, dtype=np.float32)
+        observations = {
+        'pos_départ' : self.position_depart,
+        'intervention' : np.array(self.position_goal),
+        'pos_cur' : np.array(self.bluerov.current_pose, dtype=np.float32),
         
         #baisse de la batterie simple
-        dict_obs['nivbat'] = np.array([100], dtype=np.float32) 
-        dict_obs['pos_error'] = np.array([0.5], dtype=np.float32)
-        dict_obs['waypnt'] = np.array(self.grid)
-        dict_obs['data_v'] = self.bluerov.get_collider_obstacles()
+        'nivbat' : np.array([100], dtype=np.float32),
+        'pos_error' : np.array([0.5], dtype=np.float32),
+        'waypnt' : np.array(self.grid),
+        'data_v' : obstacles,
+        'data_cam' : dict_obs['data_cam']
+        }
         
         self.batterie_pre=self.batterie
-        return Dict(dict_obs)
+        return observations
     
     def reward(self) : 
 
@@ -289,8 +296,7 @@ class UnityEnv(gym.Env):
         self.step_counter += 1
         #on recupère les infos contenue dans le dic "action", deux données, mode de traitement et coordonées voulu apres avoir fini le mode de traitement 
         sample_action=action
-        action_trait=sample_action['mode_trait']
-        self.action_dep=sample_action['case_suivante']
+        self.action_dep, action_trait = sample_action[1], sample_action[0]
 
         self.cur_action_tr = action_trait
         self.cur_action_dep = self.grid[self.action_dep-1]

@@ -36,4 +36,4 @@ observation_space = Dict(
             }
             )
 
-print(observation_space.sample())
+print(type(observation_space.sample()['data_cam']))
