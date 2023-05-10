@@ -22,7 +22,7 @@ from std_srvs.srv import Empty
 import os
 import time
 from random import *
-from bridge.position_case import box_type_exit
+from position_case import box_type_exit
 # from Dynamic_Approach.traject3d import evitement
 # from Gridy_drone_swipp.Gridy_based import scan
 
