@@ -115,14 +115,12 @@ class UnityEnv(gym.Env):
 
         # On a déterminé 5 actions possibles pour le robot : 4 qui gèrent le mode de déplacement (scan, evit, recalibrage et retour base),
         # 1 qui gère la zone à rejoindre avec le mode de déplacement choisis.
-        self.action_space =  Dict(
-            {
-               'mode_trait' : spaces.Discrete(4),
-               'case_suivante' : spaces.Discrete(len(self.grid))
-                
-            })
+        self.action_space =  spaces.Box(low=0, high=len(self.grid), shape=(1,2), dtype=np.int32)
+            
+               
+            
 
-        self.observation_space = Dict(
+        self.observation_space = spaces.Dict(
                     {
                         #X Y Z  depart
                         'pos_départ' : spaces.Box(low=float("-inf"), high=float("inf"), shape=(1,3), dtype=np.float32),
