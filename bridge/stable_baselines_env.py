@@ -58,6 +58,7 @@ class UnityEnv(gym.Env):
         self.goal_atteint= np.array([[0],[0],[0],[0],[0],[0],[0]])
         self.position=[0,0,20]
         self.position_depart=np.array([0,0,20])
+        self.pos_error = 0
 
         self.position_goal=[
                             [0,0,20],
