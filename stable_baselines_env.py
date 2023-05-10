@@ -22,7 +22,7 @@ from std_srvs.srv import Empty
 import os
 import time
 from random import *
-from position_case import type_case
+from position_case import box_type_exit
 # from Dynamic_Approach.traject3d import evitement
 # from Gridy_drone_swipp.Gridy_based import scan
 
@@ -253,10 +253,10 @@ class UnityEnv(gym.Env):
 
         #verif de la case precendante et de laction précédente 
         pso_robot=[self.pos_pre[0],self.pos_pre[1]]
-        nbr_case=5
+      
 
         #Récupere les données lier a la case dans laquel le robot ce trouve, les diffrentes portes possible et laction a effectuer dans le casse
-        type, sortie_disp=type_case(nbr_case,pso_robot)
+        type, sortie_disp=box_type_exit(action_dep)
 
         self.pre_action_tr = action_tr 
         self.pre_action_dep = action_dep
@@ -297,10 +297,10 @@ class UnityEnv(gym.Env):
         #on recupère les infos contenue dans le dic "action", deux données, mode de traitement et coordonées voulu apres avoir fini le mode de traitement 
         sample_action=action
         action_trait=sample_action['mode_trait']
-        action_dep=sample_action['case_suivante']
+        self.action_dep=sample_action['case_suivante']
 
         self.cur_action_tr = action_trait
-        self.cur_action_dep = self.grid[action_dep-1]
+        self.cur_action_dep = self.grid[self.action_dep-1]
 
         #position avant de bouger 
         self.pos_pre=self.bluerov.current_pos
@@ -309,10 +309,10 @@ class UnityEnv(gym.Env):
 
         #mise en route du mode de traitement choisi
         if action_trait == 1 :
-            self.bluerov.do_evit(self.pos_pre, action_dep)
+            self.bluerov.do_evit(self.pos_pre, self.action_dep)
 
         elif action_trait == 2 :
-            self.bluerov.do_scan(self.pos_pre, action_dep)
+            self.bluerov.do_scan(self.pos_pre, self.action_dep)
 
         elif  action_trait == 4 :
             self.bluerov.do_evit(self.pos_pre, self.position_depart)
