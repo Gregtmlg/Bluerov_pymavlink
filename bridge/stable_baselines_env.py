@@ -375,7 +375,7 @@ class UnityEnv(gym.Env):
                            ]
         self.batterie=10000
         self.flag_change=False
-        self.position_pub.publish(self.position)
+        
 
         self.change_goal()
 
