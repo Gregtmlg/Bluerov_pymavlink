@@ -27,6 +27,7 @@ from position_case import box_type_exit
 # from Gridy_drone_swipp.Gridy_based import scan
 
 from bluerov_node import BlueRov
+from termcolor import colored
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -43,7 +44,8 @@ class UnityEnv(gym.Env):
 
         #init des different parametre comme positon
         #goal, batterie ect..
-        self.bluerov = BlueRov(device='udp:localhost:14551')
+        print(colored("INFO : Init Gym Env", 'yellow'))
+        self.bluerov = BlueRov(device='udp:localhost:14550')
         self._max_episode_length = max_episode_length
 
         self.flag_change_goal=False
@@ -146,17 +148,12 @@ class UnityEnv(gym.Env):
 
         print("Roscore launched!")
 
-        # Launch the simulation with the given launchfile name
-        rospy.init_node('TD3')
-        if launchfile.startswith("/"):
-            fullpath = launchfile
-        else:
-            fullpath = os.path.join(os.path.dirname(__file__), "assets", launchfile)
-        if not path.exists(fullpath):
-            raise IOError("File " + fullpath + " does not exist")
-
-        subprocess.Popen(["roslaunch", "-p", port, fullpath])
-        print("Gazebo launched!")
+        try:
+            rospy.init_node('user_node', log_level=rospy.DEBUG)
+            print(colored("INFO : ros node créé", 'yellow'))
+        except rospy.ROSInterruptException as error:
+            print('pubs error with ROS: ', error)
+            exit(1)
         
 
     #Actualisaiton de l'observation 

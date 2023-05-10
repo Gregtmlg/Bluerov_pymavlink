@@ -1,6 +1,7 @@
 import gym
 import numpy as np
 from time import sleep
+from termcolor import colored
 
 from stable_baselines3 import TD3
 from stable_baselines3.td3.policies import MlpPolicy
@@ -12,15 +13,18 @@ from stable_baselines_env import UnityEnv
 # Set the parameters for the implementation
 max_timesteps = 1024  # Maximum number of steps to perform
 
+print(colored("INFO : Création de l'environnement Gym", 'yellow'))
 env = UnityEnv('bluerov2_scenario.launch', 256)
+print(colored("INFO : Environnement Gym créé", 'yellow'))
 
 sleep(20)
-
+print(colored("INFO : time sleep passé", 'yellow'))
 ## The noise objects for TD3
 # n_actions = env.action_space.shape[-1]
 # action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
 
 model = TD3(MlpPolicy, env)
+print(colored("INFO : Model TD3 créé", 'yellow'))
 model.learn(total_timesteps=max_timesteps, log_interval=10)
 model.save("model_bluerov2_td3")
 
