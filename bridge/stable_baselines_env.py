@@ -179,15 +179,15 @@ class UnityEnv(gym.Env):
        
        
         #actualisation des position 
-        dict_obs['pos_départ'] = np.array([self.position_depart], dtype=np.float32)
-        dict_obs['intervention'] = np.array([self.position_goal], dtype=np.float32)
-        dict_obs['pos_cur'] = np.array([self.bluerov.current_pose], dtype=np.float32)
+        dict_obs['pos_départ'] = self.position_depart
+        dict_obs['intervention'] = np.array(self.position_goal)
+        dict_obs['pos_cur'] = np.array(self.bluerov.current_pose, dtype=np.float32)
         
         #baisse de la batterie simple
-        dict_obs['nivbat'] = np.array([self.batterie_modif], dtype=np.float32) 
-        dict_obs['pos_error'] = np.array([self.pos_error], dtype=np.float32)
+        dict_obs['nivbat'] = np.array([100], dtype=np.float32) 
+        dict_obs['pos_error'] = np.array([0.5], dtype=np.float32)
         dict_obs['waypnt'] = np.array(self.grid)
-        dict_obs['data_v'] = np.array([self.bluerov.get_collider_obstacles()], dtype=np.float32)
+        dict_obs['data_v'] = self.bluerov.get_collider_obstacles()
         
         self.batterie_pre=self.batterie
         return Dict(dict_obs)
