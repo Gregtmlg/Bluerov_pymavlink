@@ -115,12 +115,7 @@ class UnityEnv(gym.Env):
 
         # On a déterminé 5 actions possibles pour le robot : 4 qui gèrent le mode de déplacement (scan, evit, recalibrage et retour base),
         # 1 qui gère la zone à rejoindre avec le mode de déplacement choisis.
-        self.action_space =  Dict(
-            {
-               'mode_trait' : spaces.Discrete(4),
-               'case_suivante' : spaces.Discrete(len(self.grid))
-                
-            })
+        self.action_space =  Box(low=np.array([0,0]), high=np.array([4,144]), dtype=np.int32)
 
         self.observation_space = Dict(
                     {
@@ -364,6 +359,7 @@ class UnityEnv(gym.Env):
     # Reset the state of the environment to an initial state
     def reset(self):
 
+        print(colored("INFO : Premier reset", 'yellow'))
         
         self.step_counter = 0
         self.position=[0,0,20]
