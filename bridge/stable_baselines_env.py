@@ -143,8 +143,8 @@ class UnityEnv(gym.Env):
                     }
                   )
 
-        port = '11311'
-        subprocess.Popen(["roscore", "-p", port])
+        # port = '11311'
+        # subprocess.Popen(["roscore", "-p", port])
 
         print("Roscore launched!")
 
