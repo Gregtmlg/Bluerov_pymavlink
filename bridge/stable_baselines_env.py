@@ -318,7 +318,7 @@ class UnityEnv(gym.Env):
 
         elif action_trait == 2 :
             print(colored("INFO : Scanning launched", 'yellow'))
-            self.bluerov.do_scan(self.pos_pre, self.action_dep, self.scanning_depth)
+            self.bluerov.do_scan(self.pos_pre, self.cur_action_dep, self.scanning_depth)
 
         elif  action_trait == 4 :
             print(colored("INFO : Return to base launched", 'yellow'))

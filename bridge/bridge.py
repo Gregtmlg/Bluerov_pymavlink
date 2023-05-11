@@ -687,6 +687,8 @@ class Bridge(object):
             Method to define the vertices of the square the robot has to scan.
         '''
         # we suppose square is 20x20. The conditions depend on the scenario we made only.
+        print(start)
+        print(goal)
         if start[1] % 20 == 0 and start[0] % 20 != 0:
             if start[0] > goal[0]:
                 ox = [start[0], start[0], start[0]-20, start[0]-20, start[0]]
