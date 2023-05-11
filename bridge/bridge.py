@@ -439,14 +439,18 @@ class Bridge(object):
 
     ###################################### Fonctions de missions #######################################################
     
-    def do_recalibrage(self, position):
+    def do_recalibrage(self, current_position):
+        '''
+            Make the bluerov get reach the surface in order to recalibrate his position with gps, then 
+            get back to his working depth
+        '''
         self.mission_ongoing = True
         self.set_target_depth(0)
         while self.current_pose[2] < -0.1:
             self.get_bluerov_data()
         time.sleep(2)
-        self.set_target_depth(-position[2])
-        while self.current_pose[2] > position[2]:
+        self.set_target_depth(-current_position[2])
+        while self.current_pose[2] > current_position[2]:
             self.get_bluerov_data()
         self.mission_ongoing = False
 

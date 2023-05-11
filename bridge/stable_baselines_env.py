@@ -59,6 +59,7 @@ class UnityEnv(gym.Env):
         self.position=[0,0,20]
         self.position_depart=np.array([0,0,20])
         self.pos_error = 0
+        self.scanning_depth = [-7]
 
         self.position_goal=[
                             [0,0,20],
@@ -146,7 +147,7 @@ class UnityEnv(gym.Env):
 
         try:
             rospy.init_node('user_node', log_level=rospy.DEBUG)
-            print(colored("INFO : ros node créé", 'yellow'))
+            print(colored("INFO : ros node created", 'yellow'))
         except rospy.ROSInterruptException as error:
             print('pubs error with ROS: ', error)
             exit(1)
@@ -300,7 +301,7 @@ class UnityEnv(gym.Env):
         self.action_dep, action_trait = sample_action[1], sample_action[0]
 
         self.cur_action_tr = action_trait
-        self.cur_action_dep = self.grid[int(self.action_dep)]
+        self.cur_action_dep = np.array(self.grid[int(self.action_dep)])
 
         #position avant de bouger 
         self.pos_pre=self.bluerov.get_current_pose()
@@ -309,17 +310,21 @@ class UnityEnv(gym.Env):
 
         #mise en route du mode de traitement choisi
         if action_trait == 1 :
+            print(colored("INFO : Obstacles avoidance launched", 'yellow'))
             self.bluerov.do_evit(self.pos_pre, self.action_dep)
 
         elif action_trait == 2 :
-            self.bluerov.do_scan(self.pos_pre, self.action_dep)
+            print(colored("INFO : Scanning launched", 'yellow'))
+            self.bluerov.do_scan(self.pos_pre, self.action_dep, self.scanning_depth)
 
         elif  action_trait == 4 :
+            print(colored("INFO : Return to base launched", 'yellow'))
             self.bluerov.do_evit(self.pos_pre, self.position_depart)
             done = True
             
         elif  action_trait == 3 :
-            self.bluerov.do_recalibrage(self.pos_pre, self.pos_pre)
+            print(colored("INFO : Position recalibration launched", 'yellow'))
+            self.bluerov.do_recalibrage(self.pos_pre)
             self.pos_error = 0
 
         self.cur_pos=self.bluerov.current_pos
@@ -367,7 +372,7 @@ class UnityEnv(gym.Env):
     # Reset the state of the environment to an initial state
     def reset(self):
 
-        print(colored("INFO : Premier reset", 'yellow'))
+        print(colored("INFO : First reset", 'yellow'))
         
         self.step_counter = 0
         self.position=[0,0,20]
@@ -381,7 +386,7 @@ class UnityEnv(gym.Env):
                             [0,0,20],
                             [0,0,20]
                            ]
-        self.batterie=10000
+        self.batterie=100
         self.flag_change=False
         
 
