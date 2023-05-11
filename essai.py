@@ -36,4 +36,6 @@ observation_space = Dict(
             }
             )
 
-print(type(observation_space.sample()['data_cam']))
+action_space =  Box(low=np.array([0,0]), high=np.array([4,144]), dtype=np.uint32)
+
+print(type(action_space.sample()[1]))

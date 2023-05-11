@@ -116,7 +116,7 @@ class UnityEnv(gym.Env):
 
         # On a déterminé 5 actions possibles pour le robot : 4 qui gèrent le mode de déplacement (scan, evit, recalibrage et retour base),
         # 1 qui gère la zone à rejoindre avec le mode de déplacement choisis.
-        self.action_space =  Box(low=np.array([0,0]), high=np.array([4,144]), dtype=np.uint32)
+        self.action_space =  Box(low=np.array([0,0]), high=np.array([4,143]), dtype=np.uint32)
 
         self.observation_space = Dict(
                     {
@@ -155,6 +155,7 @@ class UnityEnv(gym.Env):
     #Actualisaiton de l'observation 
     def get_observation(self):
         
+        # use a sample for data cam that is still not implemented
         dict_obs = self.observation_space.sample()
         
         
@@ -187,7 +188,7 @@ class UnityEnv(gym.Env):
         observations = {
         'pos_départ' : self.position_depart,
         'intervention' : np.array(self.position_goal),
-        'pos_cur' : np.array(self.bluerov.current_pose, dtype=np.float32),
+        'pos_cur' : self.bluerov.get_current_pose(),
         
         #baisse de la batterie simple
         'nivbat' : np.array([100], dtype=np.float32),
@@ -299,10 +300,10 @@ class UnityEnv(gym.Env):
         self.action_dep, action_trait = sample_action[1], sample_action[0]
 
         self.cur_action_tr = action_trait
-        self.cur_action_dep = self.grid[self.action_dep-1]
+        self.cur_action_dep = self.grid[int(self.action_dep)]
 
         #position avant de bouger 
-        self.pos_pre=self.bluerov.current_pos
+        self.pos_pre=self.bluerov.get_current_pose()
 
         
 
@@ -390,7 +391,9 @@ class UnityEnv(gym.Env):
 
 
         return observations
-
+    
+    ################### Not DRL methods #######################
+    
     # Place a new goal and check if its lov\cation is not on one of the obstacles
     def change_goal(self):
         n = randint(1,10)
@@ -411,7 +414,13 @@ class UnityEnv(gym.Env):
         if randint(1,500)==1 and self.flag_courant==False:
             self.flag_courant=True   
 
-        
+    def obstacle_observations(self):
+        '''
+            Take obstacles data from the bluerov sensor and transform them to match 
+            observation space.
+        '''
+        obstacles = self.bluerov.get_collider_obstacles()
+        pass
 
 
 

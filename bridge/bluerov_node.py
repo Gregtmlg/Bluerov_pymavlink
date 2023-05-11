@@ -670,6 +670,9 @@ class BlueRov(Bridge):
         return bat_percentage
     
     def get_current_pose(self) : 
+        '''
+            Returns current NED position of the bluerov with numpy array type : array([x, y, z]) 
+        '''
         current_pose = np.array(self.current_pose)
         return current_pose
 
