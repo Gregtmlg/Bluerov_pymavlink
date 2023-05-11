@@ -455,10 +455,17 @@ class Bridge(object):
         self.mission_ongoing = False
 
 
-    def do_scan(self, px, py, oz):
+    def do_scan(self, start_scan_pose, end_scan_pose, oz):
+        #In our scenario, all square areas are 20x20
         self.mission_ongoing = True
         self.mission_scan = True
         desired_position = [0.0, 0.0, -oz[0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        plannification = Plannification()
+        ox, oy = self.scan_zone(start_scan_pose, end_scan_pose)
+        resolution = 3
+        px, py = plannification.planning(ox, oy, resolution)
+        px.append(end_scan_pose[0])
+        py.append(end_scan_pose[1])
 
         while self.mission_ongoing and self.mission_scan:
             self.get_bluerov_data()
@@ -674,6 +681,28 @@ class Bridge(object):
 
         return obstacle
     ############################################################ Fin fonction détection d'obstacles ##############################################
+    ############################################################ Fonctions Utiles ################################################################
+    def scan_zone(self, start, goal):
+        '''
+            Method to define the vertices of the square the robot has to scan.
+        '''
+        # we suppose square is 20x20. The conditions depend on the scenario we made only.
+        if start[1] % 20 == 0 and start[0] % 20 != 0:
+            if start[0] > goal[0]:
+                ox = [start[0], start[0], start[0]-20, start[0]-20, start[0]]
+                oy = [start[1]+10, start[1]-10, start[1]-10, start[1]+10, start[1]+10]
+            else:
+                ox = [start[0], start[0], start[0]+20, start[0]+20, start[0]]
+                oy = [start[1]+10, start[1]-10, start[1]-10, start[1]+10, start[1]+10]
+        else:
+            if start[1] > goal[1]:
+                ox = [start[0]+10, start[0]-10, start[0]-10, start[0]+10, start[0]+10]
+                oy = [start[1], start[1], start[1]-20, start[1]-20, start[1]]
+            else:
+                ox = [start[0]+10, start[0]-10, start[0]-10, start[0]+10, start[0]+10]
+                oy = [start[1], start[1], start[1]+20, start[1]+20, start[1]]
+
+        return ox, oy
         
 ################################################################ Fin classe Bridge ###############################################################
 

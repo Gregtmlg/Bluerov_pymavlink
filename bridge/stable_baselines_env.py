@@ -211,75 +211,74 @@ class UnityEnv(gym.Env):
         score_traitement=0
         score_recalibrage=0
        
-        positon_cur= self.bluerov.get_current_pose()
-        positon_goal=np.array(self.position_goal)
+        # positon_cur= self.bluerov.get_current_pose()
+        # positon_goal=np.array(self.position_goal)
 
-        self.pre_dist_to_goal =  self.current_dist_to_goal
+        # self.pre_dist_to_goal =  self.current_dist_to_goal
 
-        #Calcule de la distance du robot par rapport a chaqun des goals 
-        current_dist_to_goal=[[],[],[],[],[],[],[]]
-        for i in range(0,7) :
-             current_dist_to_goal[i] = np.linalg.norm(positon_goal[i]- positon_cur)
+        # #Calcule de la distance du robot par rapport a chaqun des goals 
+        # current_dist_to_goal=[]
+        # for i in range(0,7) :
+        #      current_dist_to_goal.append(np.linalg.norm(positon_goal[i]- positon_cur))
 
+        # #calcule de la ditance de par rapport au départ 
+        # current_dist_to_start = np.linalg.norm(self.position_depart - positon_cur)
+        
+        # for i in range(0,7) :
+        #     #On regade si le robot a atteint un goal si oui +100pts et on pase la variable de goal atteint a 1 pour ce goal 
+        #     if current_dist_to_goal[i]< GOAL_REACHED_DIST : 
+        #         score_goal=100
+        #         self.goal_atteint[i]=1
+
+        #     #SI le robot a déja atteint les coordonée de ce goal si alors on calcule rien dautre sinon : 
+        #     if self.goal_atteint[i]==0 :
+        #         #on calcule du rapprochement/eloignement effectuer par le robot entre le step n et n+1 : 
+        #         if abs(current_dist_to_start[i] - self.pre_dist_to_goal[i])>0 :
+
+        #             score_distance=score_distance+abs(current_dist_to_start[i] - self.pre_dist_to_goal[i])*10
+        #         #de cette maniere on a pas de maluse quand on s'eloigne d'un goal qu'on vient de traiter.
+
+
+        # #actualisation de la variable pour le prochain tour de boucle.
+        # self.current_dist_to_goal=current_dist_to_goal
 
         
-        for i in range(0,7) :
-            #On regade si le robot a atteint un goal si oui +100pts et on pase la variable de goal atteint a 1 pour ce goal 
-            if current_dist_to_goal[i]< GOAL_REACHED_DIST : 
-                score_goal=100
-                self.goal_atteint[i]=1
+        # #si batterie  a 0 et le robot pas a la zone de départ alors note de batterie tres mauvaise                
+        # if self.batterie==0 :
+        #     #si le robot et a moins de 25 mettre de son départ quand 0 alors bien : 
+        #     if current_dist_to_start < 25 :
+        #         score_batterie=1000 
+        #     #sinon mauvais :
+        #     else :        
+        #         score_batterie = current_dist_to_start*(-100)
 
-            #SI le robot a déja atteint les coordonée de ce goal si alors on calcule rien dautre sinon : 
-            if self.goal_atteint[i]==0 :
-                #on calcule du rapprochement/eloignement effectuer par le robot entre le step n et n+1 : 
-                if abs(current_dist_to_start[i] - self.pre_dist_to_goal[i])>0 :
-
-                    score_distance=score_distance+abs(current_dist_to_start[i] - self.pre_dist_to_goal[i])*10
-                #de cette maniere on a pas de maluse quand on s'eloigne d'un goal qu'on vient de traiter.
-
-        #calcule de la ditance de par rapport au départ 
-        current_dist_to_start = np.linalg.norm(self.position_depart - positon_cur)
-
-        #actualisation de la variable pour le prochain tour de boucle.
-        self.current_dist_to_goal=current_dist_to_goal
-
-        
-        #si batterie  a 0 et le robot pas a la zone de départ alors note de batterie tres mauvaise                
-        if self.batterie==0 :
-            #si le robot et a moins de 25 mettre de son départ quand 0 alors bien : 
-            if current_dist_to_start < 25 :
-                score_batterie=1000 
-            #sinon mauvais :
-            else :        
-                score_batterie = current_dist_to_start*(-100)
-
-        #verif de la case precendante et de laction précédente 
-        pso_robot=[self.pos_pre[0],self.pos_pre[1]]
+        # #verif de la case precendante et de laction précédente 
+        # pso_robot=[self.pos_pre[0],self.pos_pre[1]]
       
 
-        #Récupere les données lier a la case dans laquel le robot ce trouve, les diffrentes portes possible et laction a effectuer dans le casse
-        type, sortie_disp=box_type_exit(action_dep)
+        # #Récupere les données lier a la case dans laquel le robot ce trouve, les diffrentes portes possible et laction a effectuer dans le casse
+        # type, sortie_disp=box_type_exit(action_dep)
 
-        self.pre_action_tr = action_tr 
-        self.pre_action_dep = action_dep
-        #verification pour voir si la porte choisi par le robot corrrespond a une des portes disponible dans la casse ou il ce trouvait. 
-        for i in range(0,4) : 
-            #si oui, bon pts 
-            if self.pre_action_dep == sortie_disp[i] :
-                score_dep = 100
-        #sinon malusse
-        if score_dep == 0 : 
-            score_dep = -100
+        # self.pre_action_tr = action_tr 
+        # self.pre_action_dep = action_dep
+        # #verification pour voir si la porte choisi par le robot corrrespond a une des portes disponible dans la casse ou il ce trouvait. 
+        # for i in range(0,4) : 
+        #     #si oui, bon pts 
+        #     if self.pre_action_dep == sortie_disp[i] :
+        #         score_dep = 100
+        # #sinon malusse
+        # if score_dep == 0 : 
+        #     score_dep = -100
 
-        #Verification du mode de traitement choisi par rapport a la casse ou il etait 
-        if type==self.pre_action_tr :
-            score_traitement=100
-        else :
-            score_traitement=-100
+        # #Verification du mode de traitement choisi par rapport a la casse ou il etait 
+        # if type==self.pre_action_tr :
+        #     score_traitement=100
+        # else :
+        #     score_traitement=-100
 
-        #actualisation des variables 
-        action_tr= self.cur_action_tr
-        action_dep= self.cur_action_dep  
+        # #actualisation des variables 
+        # action_tr= self.cur_action_tr
+        # action_dep= self.cur_action_dep  
 
         
 
@@ -296,6 +295,7 @@ class UnityEnv(gym.Env):
 
         #nombre de step+1
         self.step_counter += 1
+        print(colored("nb_step = " + str(self.step_counter), "red"))
         #on recupère les infos contenue dans le dic "action", deux données, mode de traitement et coordonées voulu apres avoir fini le mode de traitement 
         sample_action=action
         self.action_dep, action_trait = sample_action[1], sample_action[0]
@@ -305,6 +305,9 @@ class UnityEnv(gym.Env):
 
         #position avant de bouger 
         self.pos_pre=self.bluerov.get_current_pose()
+
+        print(colored(str(self.pos_pre), "red"))
+        print(colored(str(self.cur_action_dep), 'red'))
 
         
 
@@ -327,7 +330,7 @@ class UnityEnv(gym.Env):
             self.bluerov.do_recalibrage(self.pos_pre)
             self.pos_error = 0
 
-        self.cur_pos=self.bluerov.current_pos
+        self.cur_pos=self.bluerov.get_current_pose()
 
         self.imponderables()               
         #actualise les infos
@@ -347,18 +350,18 @@ class UnityEnv(gym.Env):
         
         reward=self.reward()
        
-        #verifie si une collision a eu lieu 
-        collision, min_laser = self.observe_collision(self.velodyne_data)
+        # #verifie si une collision a eu lieu 
+        # collision, min_laser = self.observe_collision(self.velodyne_data)
 
-        #reward negarif si collision + fin d'épisode 
-        if collision:
-            done = True
+        # #reward negarif si collision + fin d'épisode 
+        # if collision:
+        #     done = True
 
        
 
-        #calculer la distance entre le goal et la position actul 
-        if self.current_dist_to_goal < GOAL_REACHED_DIST or self.cur_pos :
-            done = True
+        # #calculer la distance entre le goal et la position actul 
+        # if self.current_dist_to_goal < GOAL_REACHED_DIST or self.cur_pos :
+        #     done = True
         
         #imprime le reward dans ros et le nombre de step
         rospy.loginfo(reward)

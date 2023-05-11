@@ -39,3 +39,5 @@ observation_space = Dict(
 action_space =  Box(low=np.array([0,0]), high=np.array([4,144]), dtype=np.uint32)
 
 print(type(action_space.sample()[1]))
+
+
