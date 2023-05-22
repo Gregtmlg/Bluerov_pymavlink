@@ -1,0 +1,17 @@
+INFO : Get_observations passed
+Traceback (most recent call last):
+  File "/home/gregtmlg/Bluerov_pymavlink/bridge/stable_baselines_td3.py", line 28, in <module>
+    model.learn(total_timesteps=max_timesteps, log_interval=10)
+  File "/home/gregtmlg/.local/lib/python3.8/site-packages/stable_baselines3/td3/td3.py", line 211, in learn
+    return super().learn(
+  File "/home/gregtmlg/.local/lib/python3.8/site-packages/stable_baselines3/common/off_policy_algorithm.py", line 332, in learn
+    total_timesteps, callback = self._setup_learn(
+  File "/home/gregtmlg/.local/lib/python3.8/site-packages/stable_baselines3/common/off_policy_algorithm.py", line 308, in _setup_learn
+    return super()._setup_learn(
+  File "/home/gregtmlg/.local/lib/python3.8/site-packages/stable_baselines3/common/base_class.py", line 446, in _setup_learn
+    self._last_obs = self.env.reset()  # pytype: disable=annotation-type-mismatch
+  File "/home/gregtmlg/.local/lib/python3.8/site-packages/stable_baselines3/common/vec_env/dummy_vec_env.py", line 64, in reset
+    self._save_obs(env_idx, obs)
+  File "/home/gregtmlg/.local/lib/python3.8/site-packages/stable_baselines3/common/vec_env/dummy_vec_env.py", line 96, in _save_obs
+    self.buf_obs[key][env_idx] = obs[key]
+IndexError: only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices

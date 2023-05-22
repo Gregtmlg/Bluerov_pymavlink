@@ -35,6 +35,7 @@ class Bridge(object):
         print("Heartbeat from system (system %u component %u)" % (self.conn.target_system, self.conn.target_component))
             
         self.data = {}
+        self.update()
         # [x, y, z] selon EKF
         self.current_pose = [0,0,0]
         # [roll, pitch, yaw] en radians
@@ -437,137 +438,7 @@ class Bridge(object):
 
     ###################################### Fin fonctions commandes MAVLINK #############################################
 
-    ###################################### Fonctions de missions #######################################################
-    
-    def do_recalibrage(self, current_position):
-        '''
-            Make the bluerov get reach the surface in order to recalibrate his position with gps, then 
-            get back to his working depth
-        '''
-        self.mission_ongoing = True
-        self.set_target_depth(0)
-        while self.current_pose[2] < -0.1:
-            self.get_bluerov_data()
-        time.sleep(2)
-        self.set_target_depth(-current_position[2])
-        while self.current_pose[2] > current_position[2]:
-            self.get_bluerov_data()
-        self.mission_ongoing = False
-
-
-    def do_scan(self, start_scan_pose, end_scan_pose, oz):
-        #In our scenario, all square areas are 20x20
-        self.mission_ongoing = True
-        self.mission_scan = True
-        desired_position = [0.0, 0.0, -oz[0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        plannification = Plannification()
-        ox, oy = self.scan_zone(start_scan_pose, end_scan_pose)
-        resolution = 3
-        px, py = plannification.planning(ox, oy, resolution)
-        px.append(end_scan_pose[0])
-        py.append(end_scan_pose[1])
-
-        while self.mission_ongoing and self.mission_scan:
-            self.get_bluerov_data()
-
-            current_pose = self.current_pose
-            desired_position[0], desired_position[1] = px[self.mission_scan_point], py[self.mission_scan_point]
-
-            if abs(current_pose[0] - desired_position[0]) < 0.2 and abs(current_pose[1] - desired_position[1]) < 0.2:
-                # print("Arrivé au point")
-                if self.mission_scan_point == len(px) - 1:
-                    self.ok_pose = True
-                    print('Mission de scan terminée !')
-                    self.mission_scan_point = 0
-                    self.mission_scan = False
-                    self.mission_ongoing = False
-                    self.mission_point_sent = False
-                else :
-                    self.mission_scan_point += 1
-                    desired_position[0], desired_position[1] = px[self.mission_scan_point], py[self.mission_scan_point]
-                self.mission_point_sent = False
-
-            if self.mission_point_sent == False:
-                time.sleep(0.05)
-                # self.ok_pose = False
-                self.set_position_target_local_ned(desired_position)
-                time.sleep(0.05)
-                self.mission_point_sent = True
-
-
-        
-    def do_evit(self, x_init, goal):
-        self.mission_ongoing = True
-        self.mission_evit = True
-        z_mission = x_init[2]
-
-        while self.init_evit == False:
-            self.get_bluerov_data()
-
-            if self.mission_point_sent == False:
-                time.sleep(0.05)
-                self.ok_pose = False
-                initial_position = [x_init[0], x_init[1], -z_mission, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -2.88, 0.0]
-                self.set_position_target_local_ned(initial_position)
-                time.sleep(0.05)
-                self.mission_point_sent = True
-
-            if abs(self.current_pose[0] - x_init[0]) < 0.2 and abs(self.current_pose[1] - x_init[1]) < 0.2:
-                self.init_evit = True
-                print("je suis au point initial")
-                self.x = np.array([x_init[0], x_init[1], self.current_attitude[2], 0.0, 0.0])
-                self.mission_point_sent = False
-                self.evitement = Evitement(goal)
-
-
-
-        # on observe les obstacles environnants
-        # self.ob = self.get_lidar_obstacle(90)
-        # self.ob = self.get_velodyne_obstacle()
-
-        while self.init_evit == True:
-            self.get_bluerov_data()
-            # si on a commencé la mission d'évitement 
-            # print("init_evit " + str(self.init_evit))
-            if abs(self.current_pose[0] - self.x[0]) < 0.02 and abs(self.current_pose[1] - self.x[1]) < 0.02:
-                # print("avant do evit planning")
-                obstacles = self.get_collider_obstacles()
-                self.ob = np.array([[]])
-                compteur = 0
-                while obstacles.size == 0:
-                    obstacles = self.get_collider_obstacles()
-                    compteur+=1
-                    if obstacles.size > 0 or compteur > 150000:
-                        break
-                self.ob = obstacles
-                # print(compteur)
-                # print("Final ", self.ob)
-
-                current_pose = np.array([self.current_pose[0], self.current_pose[1], self.x[2], self.x[3], self.x[4]])
-                # print("entrée = " + str(self.x))
-                self.x = self.evitement.planning(self.ob, self.x)
-                # self.x[2] = -self.x[2]
-                self.mission_point_sent = False
-                # print(self.x[0:2])
-                # print("self.current_pose = " + str(self.current_pose))
-                # return self.x, u, trajectory
-
-            if self.mission_point_sent == False:
-                time.sleep(0.05)
-                self.ok_pose = False
-                desired_position = [self.x[0], self.x[1], -z_mission, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, self.x[2], self.x[4]]
-                self.set_position_target_local_ned(desired_position)
-                time.sleep(0.05)
-                self.mission_point_sent = True
-
-            if self.evitement.goal_reached:
-                self.mission_ongoing = False
-                self.mission_evit = False
-                self.init_evit = False
-                self.mission_point_sent = False
-                print("Mission d'évitement terminée !")
-                self.evitement.goal_reached = False
-    ################################## Fin fonction de missions #####################################################
+   
 
     ################################## Fonctions de détection d'obstacles ###########################################
     def get_collider_obstacles(self):

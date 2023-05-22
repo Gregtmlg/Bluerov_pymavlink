@@ -17,7 +17,7 @@ print(colored("INFO : Gym Environment creation", 'yellow'))
 env = UnityEnv('bluerov2_scenario.launch', 256)
 print(colored("INFO : Gym Environment created", 'yellow'))
 
-sleep(20)
+sleep(10)
 print(colored("INFO : time sleep passed", 'yellow'))
 ## The noise objects for TD3
 # n_actions = env.action_space.shape[-1]
