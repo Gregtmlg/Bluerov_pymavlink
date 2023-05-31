@@ -377,8 +377,8 @@ class UnityEnv(gym.Env):
         #     done = True
         
         #imprime le reward dans ros et le nombre de step
-        rospy.loginfo(reward)
-        rospy.loginfo(self.step_counter)
+        # rospy.loginfo(reward)
+        # rospy.loginfo(self.step_counter)
         
         #envoi les infos a l'IA
         return observations, reward, done, info
