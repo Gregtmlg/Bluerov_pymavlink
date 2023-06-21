@@ -156,3 +156,4 @@ def box_type_exit(robot) :
 # type,sortie=box_type_exit(robot)
 # print("case de type :", type)
 # print("les sorties/entrée disponible de cette cas sont les suivante : ",sortie)   
+print(len(coordonnes_cases))

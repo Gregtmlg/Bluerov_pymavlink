@@ -442,7 +442,7 @@ class Bridge(object):
 
     ################################## Fonctions de détection d'obstacles ###########################################
     def get_collider_obstacles(self):
-        obstacles = np.array([[p.x, p.z] for p in self.obstacles_colliders.points])
+        obstacles = np.array([[p.x, p.z, p.y] for p in self.obstacles_colliders.points])
         # print(obstacles)
         return obstacles
 
