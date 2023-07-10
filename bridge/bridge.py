@@ -58,7 +58,7 @@ class Bridge(object):
 
         self.scan_subscriber= rospy.Subscriber("/scan", LaserScan, self.scan_callback, queue_size=1)
         self.velodyne_subscriber= rospy.Subscriber("/velodyne_points", PointCloud2, self.velodyne_callback, queue_size=1)
-        self.collider_subscriber= rospy.Subscriber("/BlueRov2/obstacles", PointCloud, self.collider_callback, queue_size=100)
+        # self.collider_subscriber= rospy.Subscriber("/BlueRov2/obstacles", PointCloud, self.collider_callback, queue_size=100)
 
         # Dimension observations velodyne
         self.environment_dim = 20
